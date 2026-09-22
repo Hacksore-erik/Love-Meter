@@ -1,0 +1,273 @@
+/* ============================================================
+   LAYOUT — каркас приложения, шапка, табы, экраны
+   ============================================================ */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  padding-top: var(--safe-top);
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.app-header {
+  flex-shrink: 0;
+  padding: 14px 20px 8px;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  position: relative;
+  z-index: 10;
+}
+
+.app-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  line-height: 1.1;
+}
+
+.app-subtitle {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 3px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+/* ---------- Стрик-пилюля ---------- */
+.streak-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, var(--accent-bg), #ffe5ec);
+  padding: 7px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  box-shadow: 0 2px 8px rgba(255, 45, 85, 0.12);
+  flex-shrink: 0;
+  transition: transform var(--dur) var(--ease-spring);
+}
+
+.streak-pill:active {
+  transform: scale(0.94);
+}
+
+.streak-emoji {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.streak-value {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+}
+
+/* ---------- Точка синхронизации ---------- */
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-soft);
+  margin-left: 2px;
+  transition: background var(--dur) var(--ease),
+              box-shadow var(--dur) var(--ease);
+  flex-shrink: 0;
+}
+
+.sync-dot.on {
+  background: var(--success-text);
+  box-shadow: 0 0 0 3px rgba(31, 170, 74, 0.15);
+}
+
+.sync-dot.off {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.15);
+}
+
+.sync-dot.local {
+  background: var(--text-soft);
+}
+
+/* ============================================================
+   ЭКРАНЫ
+   ============================================================ */
+.screens {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 20px calc(100px + var(--safe-bottom));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur) var(--ease);
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.screen.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ---------- Заголовки экранов ---------- */
+.screen-header {
+  margin-bottom: 20px;
+}
+
+.screen-title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  line-height: 1.1;
+}
+
+.screen-subtitle {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-top: 3px;
+  font-weight: 500;
+}
+
+/* ============================================================
+   TAB BAR
+   ============================================================ */
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(64px + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-top: 0.5px solid var(--separator);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-around;
+  padding-top: 6px;
+  z-index: 50;
+}
+
+.tab-item {
+  flex: 1;
+  max-width: 78px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px;
+  border-radius: var(--radius-sm);
+  transition: transform var(--dur-fast) var(--ease);
+  position: relative;
+}
+
+.tab-item:active {
+  transform: scale(0.9);
+}
+
+.tab-emoji {
+  font-size: 22px;
+  line-height: 1;
+  transition: transform var(--dur) var(--ease-spring);
+  display: block;
+}
+
+.tab-item.active .tab-emoji {
+  transform: scale(1.15);
+}
+
+.tab-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-weight: 500;
+  transition: color var(--dur) var(--ease);
+  letter-spacing: 0.1px;
+}
+
+.tab-item.active .tab-label {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---------- Индикатор под активным табом ---------- */
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+}
+
+/* ============================================================
+   АДАПТАЦИЯ ДЛЯ ПЛАНШЕТОВ И ДЕСКТОПА
+   ============================================================ */
+@media (min-width: 600px) {
+  .screens {
+    max-width: 560px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .app-header {
+    max-width: 560px;
+    margin: 0 auto;
+    width: 100%;
+    padding-top: 20px;
+  }
+
+  .tab-bar {
+    max-width: 560px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-left: 0.5px solid var(--separator);
+    border-right: 0.5px solid var(--separator);
+  }
+}
+
+/* ============================================================
+   ЛАНДШАФТ — уменьшаем отступы, экономим высоту
+   ============================================================ */
+@media (orientation: landscape) and (max-height: 500px) {
+  .app-header {
+    padding-top: 6px;
+    padding-bottom: 4px;
+    min-height: 40px;
+  }
+
+  .screen {
+    padding-bottom: calc(80px + var(--safe-bottom));
+  }
+
+  .tab-bar {
+    height: calc(56px + var(--safe-bottom));
+  }
+}
