@@ -493,14 +493,16 @@ function determineMyRole(code) {
     return;
   }
 
-  /* Случай 2: сохранённый creator — чужой ID */
+  /* Случай 2: сохранённый creator — чужой ID, значит я 'partner' */
   if (creator && creator !== APP.myId && creator !== 'other-device') {
     APP.myRole = 'partner';
     return;
   }
 
-  /* Случай 3: информации о создателе нет — ищем
-     свободный слот в свежих днях */
+  /* Случай 3: информации о создателе нет — смотрим на занятые слоты.
+     Проверяем ВСЕ дни, начиная с самого свежего. Ищем день,
+     где занят только ОДИН слот. Если нашли 'you' — я 'partner',
+     если нашли 'partner' — я 'you'. */
   const allDates = Object.keys(APP.state.votes).sort().reverse();
 
   for (let i = 0; i < allDates.length; i++) {
@@ -521,6 +523,10 @@ function determineMyRole(code) {
       continue;
     }
   }
+
+  /* Случай 4: вообще нет данных — по умолчанию 'you' */
+  APP.myRole = 'you';
+}
 
   /* Ничего не нашли — по умолчанию 'you' */
   APP.myRole = 'you';
