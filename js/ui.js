@@ -19,12 +19,14 @@ function showToast(msg, duration) {
 }
 
 function updateSyncDot(status) {
-  const dot = $('syncDot');
-  if (!dot) return;
-  dot.className = 'sync-dot';
-  if (status === 'on') { dot.classList.add('on'); dot.title = 'Синхронизировано'; }
-  else if (status === 'off') { dot.classList.add('off'); dot.title = 'Нет связи'; }
-  else { dot.classList.add('local'); dot.title = 'Локальный режим'; }
+  try {
+    const dot = $('syncDot');
+    if (!dot) return;
+    dot.className = 'sync-dot';
+    if (status === 'on') { dot.classList.add('on'); dot.title = 'Синхронизировано'; }
+    else if (status === 'off') { dot.classList.add('off'); dot.title = 'Нет связи'; }
+    else { dot.classList.add('local'); dot.title = 'Локальный режим'; }
+  } catch (e) {}
 }
 
 
@@ -46,43 +48,54 @@ let swipe = {
 };
 
 function goToTab(index, animate) {
-  const screensTrack = $('screensTrack');
-  const tabBar = $('tabBar');
-  const screens = $('screens');
-  if (!screensTrack || !tabBar || !screens) return;
+  try {
+    const screensTrack = $('screensTrack');
+    const tabBar = $('tabBar');
+    const screens = $('screens');
+    if (!screensTrack || !tabBar || !screens) return;
 
-  if (index < 0) index = 0;
-  if (index > TAB_ORDER.length - 1) index = TAB_ORDER.length - 1;
-  currentTab = index;
+    if (index < 0) index = 0;
+    if (index > TAB_ORDER.length - 1) index = TAB_ORDER.length - 1;
+    currentTab = index;
 
-  const offset = -(index * 20);
+    const offset = -(index * 20);
 
-  if (animate === false) {
-    screensTrack.classList.add('no-anim');
-    screensTrack.style.transform = 'translateX(' + offset + '%)';
-    requestAnimationFrame(function () {
+    if (animate === false) {
+      screensTrack.classList.add('no-anim');
+      screensTrack.style.transform = 'translateX(' + offset + '%)';
       requestAnimationFrame(function () {
-        screensTrack.classList.remove('no-anim');
+        requestAnimationFrame(function () {
+          screensTrack.classList.remove('no-anim');
+        });
       });
-    });
-  } else {
-    screensTrack.style.transform = 'translateX(' + offset + '%)';
+    } else {
+      screensTrack.style.transform = 'translateX(' + offset + '%)';
+    }
+
+    const allTabs = tabBar.querySelectorAll('.tab-item');
+    for (let i = 0; i < allTabs.length; i++) {
+      allTabs[i].classList.toggle('active', i === index);
+    }
+
+    // Сброс скролла у нового экрана
+    const allScreens = screens.querySelectorAll('.screen');
+    const activeScreen = allScreens[index];
+    if (activeScreen) activeScreen.scrollTop = 0;
+
+    // Ленивая отрисовка
+    const tab = TAB_ORDER[index];
+    if (tab === 'awards' && typeof renderAchievements === 'function') renderAchievements();
+    if (tab === 'calendar' && typeof renderCalendar === 'function') renderCalendar();
+    if (tab === 'chart' && typeof renderChart === 'function') renderChart();
+    if (tab === 'profile') {
+      if (typeof renderProfile === 'function') renderProfile();
+      if (typeof updateErrorLogCount === 'function') updateErrorLogCount();
+    }
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-029', e.message || 'goToTab failed', 'index=' + index);
+    }
   }
-
-  const allTabs = tabBar.querySelectorAll('.tab-item');
-  for (let i = 0; i < allTabs.length; i++) {
-    allTabs[i].classList.toggle('active', i === index);
-  }
-
-  const allScreens = screens.querySelectorAll('.screen');
-  const activeScreen = allScreens[index];
-  if (activeScreen) activeScreen.scrollTop = 0;
-
-  const tab = TAB_ORDER[index];
-  if (tab === 'awards') { try { renderAchievements(); } catch (e) {} }
-  if (tab === 'calendar') { try { renderCalendar(); } catch (e) {} }
-  if (tab === 'chart') { try { renderChart(); } catch (e) {} }
-  if (tab === 'profile') { try { renderProfile(); updateErrorLogCount(); } catch (e) {} }
 }
 
 function switchTab(tab) {
@@ -170,30 +183,36 @@ function onTouchEnd() {
    ============================================================ */
 
 function renderProfile() {
-  const pn = $('profileNames');
-  if (pn) pn.textContent = buildCoupleTitle();
+  try {
+    const pn = $('profileNames');
+    if (pn) pn.textContent = buildCoupleTitle();
 
-  const days = daysBetween(parseDate(APP.state.startDate), new Date()) + 1;
-  const sub = $('profileSub');
-  if (sub) sub.textContent = 'Вместе • ' + days + ' дней в Love Meter';
+    const days = daysBetween(parseDate(APP.state.startDate), new Date()) + 1;
+    const sub = $('profileSub');
+    if (sub) sub.textContent = 'Вместе • ' + days + ' дней в Love Meter';
 
-  const youEmoji = $('profileYouIcon');
-  if (youEmoji) youEmoji.textContent = getMyGenderEmoji();
+    const youEmoji = $('profileYouIcon');
+    if (youEmoji) youEmoji.textContent = getMyGenderEmoji();
 
-  const partnerEmoji = $('profilePartnerIcon');
-  if (partnerEmoji) partnerEmoji.textContent = getPartnerGenderEmoji();
+    const partnerEmoji = $('profilePartnerIcon');
+    if (partnerEmoji) partnerEmoji.textContent = getPartnerGenderEmoji();
 
-  const youEl = $('profileYouName');
-  if (youEl) youEl.textContent = getMyName();
+    const youEl = $('profileYouName');
+    if (youEl) youEl.textContent = getMyName();
 
-  const partnerEl = $('profilePartnerName');
-  if (partnerEl) partnerEl.textContent = getPartnerName();
+    const partnerEl = $('profilePartnerName');
+    if (partnerEl) partnerEl.textContent = getPartnerName();
 
-  const pv = $('privacyValue');
-  if (pv) pv.textContent = APP.state.hideMyVotes ? 'Скрыто' : 'Открыто';
+    const pv = $('privacyValue');
+    if (pv) pv.textContent = APP.state.hideMyVotes ? 'Скрыто' : 'Открыто';
 
-  const cb = $('coupleBtnValue');
-  if (cb) cb.textContent = APP.coupleId ? 'Код: ' + APP.coupleId : 'Не подключена';
+    const cb = $('coupleBtnValue');
+    if (cb) cb.textContent = APP.coupleId ? 'Код: ' + APP.coupleId : 'Не подключена';
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-012', e.message || 'renderProfile failed', '');
+    }
+  }
 }
 
 function buildCoupleTitle() {
@@ -229,7 +248,7 @@ function openModal(htmlContent) {
     });
   } catch (e) {
     if (typeof LM !== 'undefined') {
-      LM.record('LM-013', e.message || 'Ошибка открытия модалки');
+      LM.record('LM-013', e.message || 'openModal failed', '');
     }
   }
 }
@@ -292,6 +311,7 @@ async function onCoupleModalAction(action) {
         showToast('Код: ' + APP.coupleId, 4000);
       }
     } catch (e) {
+      if (typeof LM !== 'undefined') LM.record('LM-030', e.message || 'copy failed', '');
       showToast('Код: ' + APP.coupleId, 4000);
     }
     return;
@@ -306,7 +326,7 @@ async function onCoupleModalAction(action) {
     APP.state.partnerHideFlag = false;
     APP.state.partnerName = CONFIG.DEFAULTS.partnerName;
     APP.state.partnerGender = '';
-    unsubscribeRealtime();
+    if (typeof unsubscribeRealtime === 'function') unsubscribeRealtime();
     updateSyncDot('local');
     closeModal();
     renderProfile();
@@ -316,7 +336,9 @@ async function onCoupleModalAction(action) {
   }
 
   if (action === 'create') {
-    await initSupabaseAsync();
+    try {
+      await initSupabaseAsync();
+    } catch (e) {}
     if (!APP.supabaseClient) {
       showToast('Не удалось подключиться к Supabase');
       return;
@@ -347,7 +369,9 @@ async function onCoupleModalAction(action) {
   }
 
   if (action === 'join') {
-    await initSupabaseAsync();
+    try {
+      await initSupabaseAsync();
+    } catch (e) {}
     if (!APP.supabaseClient) {
       showToast('Не удалось подключиться к Supabase');
       return;
@@ -442,8 +466,10 @@ function openMyNameModal() {
   );
 
   setTimeout(function () {
-    const inp = $('myNameInput');
-    if (inp) { inp.focus(); inp.select(); }
+    try {
+      const inp = $('myNameInput');
+      if (inp) { inp.focus(); inp.select(); }
+    } catch (e) {}
   }, 150);
 }
 
@@ -476,7 +502,7 @@ async function onMyNameModalAction(action) {
     setMyName(val);
     setMyGender(gender);
 
-    if (APP.supabaseClient && APP.coupleId) {
+    if (APP.supabaseClient && APP.coupleId && typeof pushMyName === 'function') {
       try { await pushMyName(); } catch (e) {}
     }
 
@@ -509,7 +535,7 @@ function openAboutModal() {
 
   openModal(
     '<h3>Love Meter</h3>' +
-    '<p>Трекер эмоционального состояния пары.<br>Версия 1.4 • Режим: ' + mode + '</p>' +
+    '<p>Трекер эмоционального состояния пары.<br>Версия ' + (CONFIG.VERSION || '1.5') + ' • Режим: ' + mode + '</p>' +
     '<p style="font-size:12px;margin-bottom:20px;">Данные хранятся в браузере.</p>' +
     '<button type="button" class="modal-btn primary" data-action="close">Закрыть</button>'
   );
@@ -525,7 +551,7 @@ async function togglePrivacy() {
     APP.state.hideMyVotes = !APP.state.hideMyVotes;
     saveState();
 
-    if (APP.supabaseClient && APP.coupleId) {
+    if (APP.supabaseClient && APP.coupleId && typeof pushMyHideFlag === 'function') {
       const ok = await pushMyHideFlag();
       if (!ok) showToast('Сохранено локально ⏳');
       else showToast(APP.state.hideMyVotes ? 'Оценки скрыты 🔒' : 'Оценки видны 👀');
@@ -536,7 +562,11 @@ async function togglePrivacy() {
     renderProfile();
     renderAll();
     if (isScreenActive('chart')) renderChart();
-  } catch (e) {}
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-023', e.message || 'togglePrivacy failed', '');
+    }
+  }
 }
 
 
@@ -746,12 +776,14 @@ function openErrorLog() {
 }
 
 function updateErrorLogCount() {
-  const el = $('errorLogCount');
-  if (!el) return;
-  if (typeof LM === 'undefined') { el.textContent = '—'; return; }
-  const count = LM.getAll().length;
-  el.textContent = count === 0 ? 'Ошибок нет' : String(count);
-  el.style.color = count > 0 ? 'var(--danger)' : '';
+  try {
+    const el = $('errorLogCount');
+    if (!el) return;
+    if (typeof LM === 'undefined') { el.textContent = '—'; return; }
+    const count = LM.getAll().length;
+    el.textContent = count === 0 ? 'Ошибок нет' : String(count);
+    el.style.color = count > 0 ? 'var(--danger)' : '';
+  } catch (e) {}
 }
 
 function onErrorLogAction(action) {
@@ -783,7 +815,7 @@ function onErrorLogAction(action) {
 
 
 /* ============================================================
-   PWA
+   PWA — без Service Worker на iOS
    ============================================================ */
 
 function setupPWA() {
@@ -849,47 +881,57 @@ async function onInstallClick() {
 
 
 /* ============================================================
-   СОБЫТИЯ — каждый блок в своём try/catch
+   СОБЫТИЯ — каждый блок изолирован
    ============================================================ */
 
-function bindEvents() {
-  const tabBar = $('tabBar');
-  const screens = $('screens');
-  const appHeader = $('appHeader');
-
-  /* --- ТАБЫ --- */
+function safeBind(label, fn) {
   try {
-    if (tabBar) {
-      tabBar.addEventListener('click', function (e) {
-        const tab = e.target.closest('.tab-item');
-        if (!tab) return;
-        const idx = TAB_ORDER.indexOf(tab.dataset.tab);
-        if (idx >= 0) goToTab(idx, true);
-      });
+    fn();
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-005', (label || 'bind failed') + ': ' + (e.message || ''),
+        (e.stack || '').substring(0, 200));
     }
-  } catch (e) { if (typeof LM !== 'undefined') LM.record('LM-005', 'tabBar bind', e.message || ''); }
+  }
+}
+
+function bindEvents() {
+
+  /* --- ТАБЫ (тап) --- */
+  safeBind('tabBar', function () {
+    const tabBar = $('tabBar');
+    if (!tabBar) return;
+    tabBar.addEventListener('click', function (e) {
+      const tab = e.target.closest('.tab-item');
+      if (!tab) return;
+      const idx = TAB_ORDER.indexOf(tab.dataset.tab);
+      if (idx >= 0) goToTab(idx, true);
+    });
+  });
 
   /* --- СВАЙП + СКРОЛЛ ШАПКИ --- */
-  try {
-    if (screens) {
-      screens.addEventListener('touchstart', onTouchStart, { passive: true });
-      screens.addEventListener('touchmove', onTouchMove, { passive: true });
-      screens.addEventListener('touchend', onTouchEnd, { passive: true });
-      screens.addEventListener('touchcancel', onTouchEnd, { passive: true });
+  safeBind('swipe', function () {
+    const screens = $('screens');
+    const appHeader = $('appHeader');
+    if (!screens) return;
 
-      screens.addEventListener('scroll', function () {
-        const allScreens = screens.querySelectorAll('.screen');
-        let scrolled = false;
-        for (let i = 0; i < allScreens.length; i++) {
-          if (allScreens[i].scrollTop > 4) { scrolled = true; break; }
-        }
-        if (appHeader) appHeader.classList.toggle('scrolled', scrolled);
-      }, true);
-    }
-  } catch (e) { if (typeof LM !== 'undefined') LM.record('LM-005', 'swipe bind', e.message || ''); }
+    screens.addEventListener('touchstart', onTouchStart, { passive: true });
+    screens.addEventListener('touchmove', onTouchMove, { passive: true });
+    screens.addEventListener('touchend', onTouchEnd, { passive: true });
+    screens.addEventListener('touchcancel', onTouchEnd, { passive: true });
+
+    screens.addEventListener('scroll', function () {
+      const allScreens = screens.querySelectorAll('.screen');
+      let scrolled = false;
+      for (let i = 0; i < allScreens.length; i++) {
+        if (allScreens[i].scrollTop > 4) { scrolled = true; break; }
+      }
+      if (appHeader) appHeader.classList.toggle('scrolled', scrolled);
+    }, true);
+  });
 
   /* --- ГОЛОСОВАНИЕ --- */
-  try {
+  safeBind('vote', function () {
     document.querySelectorAll('.vote-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
         if (btn.disabled) return;
@@ -897,15 +939,15 @@ function bindEvents() {
         if (v >= 1 && v <= 5) handleVote(v);
       });
     });
-  } catch (e) { if (typeof LM !== 'undefined') LM.record('LM-005', 'vote bind', e.message || ''); }
+  });
 
-  try {
+  safeBind('voteChange', function () {
     const voteChange = $('voteChange');
     if (voteChange) voteChange.addEventListener('click', onVoteChangeClick);
-  } catch (e) { if (typeof LM !== 'undefined') LM.record('LM-005', 'voteChange bind', e.message || ''); }
+  });
 
   /* --- КАЛЕНДАРЬ --- */
-  try {
+  safeBind('calGrid', function () {
     const calGrid = $('calGrid');
     if (calGrid) {
       calGrid.addEventListener('click', function (e) {
@@ -914,26 +956,29 @@ function bindEvents() {
         onCalCellClick(cell.dataset.date, parseInt(cell.dataset.day, 10));
       });
     }
+  });
+
+  safeBind('calNav', function () {
     const calPrev = $('calPrev');
     if (calPrev) calPrev.addEventListener('click', prevMonth);
     const calNext = $('calNext');
     if (calNext) calNext.addEventListener('click', nextMonth);
-  } catch (e) { if (typeof LM !== 'undefined') LM.record('LM-005', 'calendar bind', e.message || ''); }
+  });
 
   /* --- ПЕРИОД ОБЩЕГО СОСТОЯНИЯ --- */
-  try {
-    const coupleStateSeg = $('coupleStateSegmented');
-    if (coupleStateSeg) {
-      coupleStateSeg.addEventListener('click', function (e) {
+  safeBind('coupleStateSeg', function () {
+    const seg = $('coupleStateSegmented');
+    if (seg) {
+      seg.addEventListener('click', function (e) {
         const btn = e.target.closest('.couple-state-period');
         if (!btn) return;
         onCoupleStatePeriodClick(btn.dataset.period);
       });
     }
-  } catch (e) { if (typeof LM !== 'undefined') LM.record('LM-005', 'coupleState bind', e.message || ''); }
+  });
 
   /* --- ГРАФИК: ПЕРИОД --- */
-  try {
+  safeBind('segmented', function () {
     const segmented = $('segmented');
     if (segmented) {
       segmented.addEventListener('click', function (e) {
@@ -947,113 +992,113 @@ function bindEvents() {
         renderChart();
       });
     }
-  } catch (e) { if (typeof LM !== 'undefined') LM.record('LM-005', 'segmented bind', e.message || ''); }
+  });
 
   /* --- ГРАФИК: HOVER --- */
-  try {
+  safeBind('chartHover', function () {
     const chartSvg = $('chartSvg');
-    if (chartSvg) {
-      chartSvg.addEventListener('mouseover', function (e) {
-        const hover = e.target.closest('.chart-hover');
-        if (hover) onChartHover(hover);
-      });
-      chartSvg.addEventListener('mouseout', function (e) {
-        if (e.target.closest('.chart-hover')) hideChartTooltip();
-      });
-      chartSvg.addEventListener('touchstart', function (e) {
-        const hover = e.target.closest('.chart-hover');
-        if (!hover) return;
-        e.preventDefault();
-        onChartHover(hover);
-        setTimeout(hideChartTooltip, 2000);
-      }, { passive: false });
-    }
-  } catch (e) { if (typeof LM !== 'undefined') LM.record('LM-005', 'chart bind', e.message || ''); }
+    if (!chartSvg) return;
+
+    chartSvg.addEventListener('mouseover', function (e) {
+      const hover = e.target.closest('.chart-hover');
+      if (hover) onChartHover(hover);
+    });
+    chartSvg.addEventListener('mouseout', function (e) {
+      if (e.target.closest('.chart-hover')) hideChartTooltip();
+    });
+    chartSvg.addEventListener('touchstart', function (e) {
+      const hover = e.target.closest('.chart-hover');
+      if (!hover) return;
+      e.preventDefault();
+      onChartHover(hover);
+      setTimeout(hideChartTooltip, 2000);
+    }, { passive: false });
+  });
 
   /* --- ИНФО О СЕРДЦЕ --- */
-  try {
-    const heartInfoBtn = $('heartInfoBtn');
-    if (heartInfoBtn) heartInfoBtn.addEventListener('click', openHeartInfo);
-  } catch (e) { if (typeof LM !== 'undefined') LM.record('LM-005', 'heartInfo bind', e.message || ''); }
+  safeBind('heartInfo', function () {
+    const btn = $('heartInfoBtn');
+    if (btn) btn.addEventListener('click', openHeartInfo);
+  });
 
   /* --- МОДАЛЬНЫЕ КНОПКИ --- */
-  try {
+  safeBind('modalContent', function () {
     const modalContent = $('coupleModalContent');
-    if (modalContent) {
-      modalContent.addEventListener('click', function (e) {
-        const gBtn = e.target.closest('.gender-btn');
-        if (gBtn) { onGenderBtnClick(gBtn.dataset.gender); return; }
+    if (!modalContent) return;
 
-        const btn = e.target.closest('[data-action]');
-        if (!btn) return;
-        const action = btn.dataset.action;
+    modalContent.addEventListener('click', function (e) {
+      const gBtn = e.target.closest('.gender-btn');
+      if (gBtn) { onGenderBtnClick(gBtn.dataset.gender); return; }
 
-        if (action === 'save-my-name') onMyNameModalAction(action);
-        else if (action === 'copy-log' || action === 'clear-log') onErrorLogAction(action);
-        else onCoupleModalAction(action);
-      });
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const action = btn.dataset.action;
 
-      modalContent.addEventListener('keydown', function (e) {
-        if (e.key !== 'Enter') return;
-        const t = e.target;
-        if (t && t.id === 'joinCodeInput') { e.preventDefault(); onCoupleModalAction('join'); }
-        if (t && t.id === 'myNameInput') { e.preventDefault(); onMyNameModalAction('save-my-name'); }
-      });
-    }
-  } catch (e) { if (typeof LM !== 'undefined') LM.record('LM-005', 'modal bind', e.message || ''); }
+      if (action === 'save-my-name') onMyNameModalAction(action);
+      else if (action === 'copy-log' || action === 'clear-log') onErrorLogAction(action);
+      else onCoupleModalAction(action);
+    });
 
-  try {
+    modalContent.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      const t = e.target;
+      if (t && t.id === 'joinCodeInput') { e.preventDefault(); onCoupleModalAction('join'); }
+      if (t && t.id === 'myNameInput') { e.preventDefault(); onMyNameModalAction('save-my-name'); }
+    });
+  });
+
+  safeBind('modalBackdrop', function () {
     const modalBackdrop = $('coupleModal');
     if (modalBackdrop) {
       modalBackdrop.addEventListener('click', function (e) {
         if (e.target === modalBackdrop) closeModal();
       });
     }
-  } catch (e) {}
+  });
 
   /* --- КНОПКИ ПРОФИЛЯ --- */
-  try {
-    const coupleBtn = $('coupleBtn');
-    if (coupleBtn) coupleBtn.addEventListener('click', openCoupleModal);
-  } catch (e) {}
+  safeBind('coupleBtn', function () {
+    const b = $('coupleBtn');
+    if (b) b.addEventListener('click', openCoupleModal);
+  });
 
-  try {
-    const namesBtn = $('namesBtn');
-    if (namesBtn) namesBtn.addEventListener('click', openMyNameModal);
-  } catch (e) {}
+  safeBind('namesBtn', function () {
+    const b = $('namesBtn');
+    if (b) b.addEventListener('click', openMyNameModal);
+  });
 
-  try {
-    const errorLogBtn = $('errorLogBtn');
-    if (errorLogBtn) errorLogBtn.addEventListener('click', openErrorLog);
-  } catch (e) {}
+  safeBind('errorLogBtn', function () {
+    const b = $('errorLogBtn');
+    if (b) b.addEventListener('click', openErrorLog);
+  });
 
-  try {
-    const exportBtn = $('exportPdfBtn');
-    if (exportBtn) exportBtn.addEventListener('click', exportPDF);
-  } catch (e) {}
+  safeBind('exportPdfBtn', function () {
+    const b = $('exportPdfBtn');
+    if (b) b.addEventListener('click', exportPDF);
+  });
 
-  try {
-    const privacyBtn = $('privacyBtn');
-    if (privacyBtn) privacyBtn.addEventListener('click', togglePrivacy);
-  } catch (e) {}
+  safeBind('privacyBtn', function () {
+    const b = $('privacyBtn');
+    if (b) b.addEventListener('click', togglePrivacy);
+  });
 
-  try {
-    const installBtn = $('installBtn');
-    if (installBtn) installBtn.addEventListener('click', onInstallClick);
-  } catch (e) {}
+  safeBind('installBtn', function () {
+    const b = $('installBtn');
+    if (b) b.addEventListener('click', onInstallClick);
+  });
 
-  try {
-    const aboutBtn = $('aboutBtn');
-    if (aboutBtn) aboutBtn.addEventListener('click', openAboutModal);
-  } catch (e) {}
+  safeBind('aboutBtn', function () {
+    const b = $('aboutBtn');
+    if (b) b.addEventListener('click', openAboutModal);
+  });
 
-  try {
-    const resetBtn = $('resetBtn');
-    if (resetBtn) resetBtn.addEventListener('click', resetAllData);
-  } catch (e) {}
+  safeBind('resetBtn', function () {
+    const b = $('resetBtn');
+    if (b) b.addEventListener('click', resetAllData);
+  });
 
   /* --- ГЛОБАЛЬНЫЕ --- */
-  try {
+  safeBind('global', function () {
     window.addEventListener('lm:error', function () { updateErrorLogCount(); });
     window.addEventListener('online', function () {
       updateSyncDot(HAS_SUPABASE && APP.coupleId ? 'on' : 'local');
@@ -1062,11 +1107,11 @@ function bindEvents() {
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closeModal();
     });
-  } catch (e) {}
+  });
 
-  try { updateErrorLogCount(); } catch (e) {}
-
-  try { goToTab(0, false); } catch (e) {}
-
-  try { setInterval(updateUpdatedHint, 12000); } catch (e) {}
+  safeBind('final', function () {
+    updateErrorLogCount();
+    goToTab(0, false);
+    setInterval(updateUpdatedHint, 12000);
+  });
 }
