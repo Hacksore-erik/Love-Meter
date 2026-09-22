@@ -1,18 +1,7 @@
 /* ============================================================
-   COMPONENTS — карточки, сердце, голосование, календарь,
-   график, модалка, toast, PDF, журнал ошибок, имена, блок пары
-   ============================================================
-   Изменения в этой версии:
-   - Стили блока имён (.names-card)
-   - Починка #pdfTemplate: убран left: -10000px, теперь
-     элемент лежит под всем контентом с opacity: 0.
-     Это критично для html2canvas — он рендерит только
-     видимые (в т.ч. прозрачные) элементы.
+   COMPONENTS
    ============================================================ */
 
-/* ============================================================
-   КАРТОЧКА (базовая)
-   ============================================================ */
 .card {
   background: var(--card);
   border-radius: var(--radius-lg);
@@ -21,9 +10,8 @@
   margin-bottom: 16px;
 }
 
-/* ============================================================
-   СЕРДЦЕ
-   ============================================================ */
+/* ---------- СЕРДЦЕ ---------- */
+
 .heart-container {
   display: flex;
   flex-direction: column;
@@ -38,11 +26,7 @@
   width: min(70vw, 300px);
   height: min(70vw, 300px);
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(255, 45, 85, 0.25) 0%,
-    rgba(255, 45, 85, 0) 70%
-  );
+  background: radial-gradient(circle, rgba(255,45,85,0.25) 0%, rgba(255,45,85,0) 70%);
   filter: blur(24px);
   pointer-events: none;
   animation: glowPulse 3s ease-in-out infinite;
@@ -72,7 +56,7 @@
   font-size: clamp(32px, 10vw, 46px);
   font-weight: 800;
   color: #fff;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 2px 12px rgba(0,0,0,0.25);
   letter-spacing: -1px;
   pointer-events: none;
   z-index: 5;
@@ -89,12 +73,9 @@
   line-height: 1.3;
 }
 
-/* ============================================================
-   БЛОК «ОБЩЕЕ СОСТОЯНИЕ ПАРЫ»
-   ============================================================ */
-.couple-state-card {
-  padding: 18px 20px;
-}
+/* ---------- БЛОК ПАРЫ ---------- */
+
+.couple-state-card { padding: 18px 20px; }
 
 .couple-state-header {
   display: flex;
@@ -114,7 +95,7 @@
 
 .segmented-small {
   display: flex;
-  background: rgba(118, 118, 128, 0.12);
+  background: rgba(118,118,128,0.12);
   border-radius: 8px;
   padding: 2px;
   margin-bottom: 0;
@@ -166,9 +147,8 @@
   font-weight: 500;
 }
 
-/* ============================================================
-   БЛОК ИМЁН В ПРОФИЛЕ
-   ============================================================ */
+/* ---------- БЛОК ИМЁН ---------- */
+
 .names-card {
   background: var(--card);
   border-radius: var(--radius-md);
@@ -189,30 +169,27 @@
 }
 
 .names-icon {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 24px;
   flex-shrink: 0;
+  line-height: 1;
+  transition: background var(--dur) var(--ease);
 }
 
 .names-icon-you {
   background: linear-gradient(135deg, #ff5e7d, #ff2d55);
-  color: #fff;
 }
 
 .names-icon-partner {
   background: linear-gradient(135deg, #8ea2ff, #5e7dff);
-  color: #fff;
 }
 
-.names-info {
-  flex: 1;
-  min-width: 0;
-}
+.names-info { flex: 1; min-width: 0; }
 
 .names-label {
   font-size: 11px;
@@ -232,12 +209,9 @@
   text-overflow: ellipsis;
 }
 
-/* ============================================================
-   КАРТОЧКА ГОЛОСОВАНИЯ
-   ============================================================ */
-.vote-card {
-  text-align: center;
-}
+/* ---------- ГОЛОСОВАНИЕ ---------- */
+
+.vote-card { text-align: center; }
 
 .vote-question {
   font-size: 15px;
@@ -276,22 +250,16 @@
   font-family: var(--font);
 }
 
-.vote-btn:active {
-  transform: scale(0.9);
-}
+.vote-btn:active { transform: scale(0.9); }
 
 .vote-btn.active {
   background: var(--accent-bg);
-  box-shadow: 0 2px 8px rgba(255, 45, 85, 0.15);
+  box-shadow: 0 2px 8px rgba(255,45,85,0.15);
 }
 
-.vote-btn.pop {
-  animation: pop var(--dur-slow) var(--ease-spring);
-}
+.vote-btn.pop { animation: pop var(--dur-slow) var(--ease-spring); }
 
-.vote-btn:disabled {
-  cursor: default;
-}
+.vote-btn:disabled { cursor: default; }
 
 .vote-hint {
   font-size: 12px;
@@ -299,9 +267,8 @@
   font-weight: 500;
 }
 
-/* ============================================================
-   КОНФЕТТИ
-   ============================================================ */
+/* ---------- КОНФЕТТИ ---------- */
+
 .confetti-particle {
   position: fixed;
   font-size: 22px;
@@ -310,15 +277,14 @@
   will-change: transform, opacity;
 }
 
-/* ============================================================
-   TOAST
-   ============================================================ */
+/* ---------- TOAST ---------- */
+
 .toast {
   position: fixed;
   top: calc(var(--safe-top) + 70px);
   left: 50%;
   transform: translateX(-50%) translateY(-20px);
-  background: rgba(28, 28, 30, 0.94);
+  background: rgba(28,28,30,0.94);
   color: #fff;
   padding: 12px 22px;
   border-radius: var(--radius-xl);
@@ -342,9 +308,8 @@
   transform: translateX(-50%) translateY(0);
 }
 
-/* ============================================================
-   НАГРАДЫ
-   ============================================================ */
+/* ---------- НАГРАДЫ ---------- */
+
 .stats-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -361,9 +326,7 @@
   transition: transform var(--dur-fast) var(--ease);
 }
 
-.stat-card:active {
-  transform: scale(0.97);
-}
+.stat-card:active { transform: scale(0.97); }
 
 .stat-value {
   font-size: 24px;
@@ -394,29 +357,15 @@
   padding: 14px;
   box-shadow: var(--shadow);
   position: relative;
-  transition: opacity var(--dur) var(--ease),
-              transform var(--dur) var(--ease);
+  transition: opacity var(--dur) var(--ease);
   overflow: hidden;
 }
 
-.ach-card.locked {
-  opacity: 0.55;
-}
+.ach-card.locked { opacity: 0.55; }
+.ach-card.locked .ach-emoji { filter: grayscale(1); }
+.ach-card.unlocked { background: linear-gradient(135deg, #fff5f7, #fff); }
 
-.ach-card.locked .ach-emoji {
-  filter: grayscale(1);
-}
-
-.ach-card.unlocked {
-  background: linear-gradient(135deg, #fff5f7, #fff);
-}
-
-.ach-emoji {
-  font-size: 34px;
-  line-height: 1;
-  margin-bottom: 8px;
-  display: block;
-}
+.ach-emoji { font-size: 34px; line-height: 1; margin-bottom: 8px; display: block; }
 
 .ach-name {
   font-size: 13px;
@@ -434,11 +383,7 @@
   min-height: 28px;
 }
 
-.ach-progress-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+.ach-progress-row { display: flex; align-items: center; gap: 8px; }
 
 .ach-bar-bg {
   flex: 1;
@@ -477,12 +422,11 @@
   color: #fff;
   font-size: 12px;
   font-weight: 700;
-  box-shadow: 0 2px 6px rgba(255, 45, 85, 0.3);
+  box-shadow: 0 2px 6px rgba(255,45,85,0.3);
 }
 
-/* ============================================================
-   КАЛЕНДАРЬ
-   ============================================================ */
+/* ---------- КАЛЕНДАРЬ ---------- */
+
 .cal-header {
   display: flex;
   align-items: center;
@@ -491,16 +435,8 @@
   padding: 0 4px;
 }
 
-.cal-month {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.4px;
-}
-
-.cal-nav {
-  display: flex;
-  gap: 8px;
-}
+.cal-month { font-size: 18px; font-weight: 700; letter-spacing: -0.4px; }
+.cal-nav { display: flex; gap: 8px; }
 
 .cal-nav-btn {
   width: 36px;
@@ -514,8 +450,7 @@
   justify-content: center;
   color: var(--text);
   box-shadow: var(--shadow);
-  transition: transform var(--dur-fast) var(--ease),
-              background var(--dur) var(--ease);
+  transition: transform var(--dur-fast) var(--ease);
   font-weight: 500;
   padding-bottom: 2px;
   cursor: pointer;
@@ -523,14 +458,8 @@
   font-family: var(--font);
 }
 
-.cal-nav-btn:active {
-  transform: scale(0.9);
-  background: var(--bg);
-}
-
-.cal-card {
-  padding: 16px;
-}
+.cal-nav-btn:active { transform: scale(0.9); background: var(--bg); }
+.cal-card { padding: 16px; }
 
 .cal-weekdays {
   display: grid;
@@ -561,16 +490,13 @@
   justify-content: center;
   padding: 0;
   border-radius: 50%;
-  transition: background var(--dur-fast) var(--ease);
   cursor: pointer;
   border: none;
   background: none;
   font-family: var(--font);
 }
 
-.cal-cell:active {
-  background: var(--bg);
-}
+.cal-cell:active { background: var(--bg); }
 
 .cal-day {
   width: 100%;
@@ -583,32 +509,20 @@
   font-size: 13px;
   font-weight: 500;
   color: var(--text);
-  transition: transform var(--dur-fast) var(--ease),
-              box-shadow var(--dur) var(--ease);
+  transition: transform var(--dur-fast) var(--ease);
   font-variant-numeric: tabular-nums;
 }
 
-.cal-cell:active .cal-day {
-  transform: scale(0.9);
-}
-
-.cal-day.empty {
-  color: var(--text-dim);
-}
-
-.cal-day.has-data {
-  color: #fff;
-  font-weight: 600;
-}
+.cal-cell:active .cal-day { transform: scale(0.9); }
+.cal-day.empty { color: var(--text-dim); }
+.cal-day.has-data { color: #fff; font-weight: 600; }
 
 .cal-day.both {
-  box-shadow: 0 0 0 2px var(--card),
-              0 0 0 3.5px var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--accent-soft);
 }
 
 .cal-day.both.hidden-some {
-  box-shadow: 0 0 0 2px var(--card),
-              0 0 0 3.5px var(--text-soft);
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--text-soft);
 }
 
 .cal-legend {
@@ -630,12 +544,7 @@
   font-weight: 500;
 }
 
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
 .legend-ring {
   width: 12px;
@@ -646,32 +555,17 @@
   flex-shrink: 0;
 }
 
-/* ============================================================
-   ИНСАЙТ
-   ============================================================ */
-.insight-title {
-  font-size: 15px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
+/* ---------- ИНСАЙТ ---------- */
 
-.insight-text {
-  font-size: 13px;
-  color: var(--text-dim);
-  line-height: 1.5;
-}
+.insight-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+.insight-text { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+.insight-text b { color: var(--accent); font-weight: 700; }
 
-.insight-text b {
-  color: var(--accent);
-  font-weight: 700;
-}
+/* ---------- SEGMENTED ---------- */
 
-/* ============================================================
-   ДИНАМИКА — segmented control
-   ============================================================ */
 .segmented {
   display: flex;
-  background: rgba(118, 118, 128, 0.12);
+  background: rgba(118,118,128,0.12);
   border-radius: 10px;
   padding: 2px;
   margin-bottom: 20px;
@@ -696,16 +590,13 @@
 
 .seg-btn.active {
   background: var(--card);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
 }
 
-.seg-btn:active {
-  transform: scale(0.97);
-}
+.seg-btn:active { transform: scale(0.97); }
 
-/* ============================================================
-   ГРАФИК
-   ============================================================ */
+/* ---------- ГРАФИК ---------- */
+
 .chart-header {
   display: flex;
   align-items: baseline;
@@ -729,24 +620,11 @@
   font-weight: 600;
   padding: 4px 10px;
   border-radius: var(--radius-sm);
-  transition: background var(--dur) var(--ease),
-              color var(--dur) var(--ease);
 }
 
-.delta-up {
-  background: var(--success-bg);
-  color: var(--success-text);
-}
-
-.delta-down {
-  background: var(--danger-bg);
-  color: var(--danger-text);
-}
-
-.delta-same {
-  background: var(--neutral-bg);
-  color: var(--neutral-text);
-}
+.delta-up { background: var(--success-bg); color: var(--success-text); }
+.delta-down { background: var(--danger-bg); color: var(--danger-text); }
+.delta-same { background: var(--neutral-bg); color: var(--neutral-text); }
 
 .chart-svg-wrap {
   position: relative;
@@ -763,7 +641,7 @@
 
 .chart-tooltip {
   position: absolute;
-  background: rgba(28, 28, 30, 0.9);
+  background: rgba(28,28,30,0.9);
   color: #fff;
   padding: 6px 10px;
   border-radius: var(--radius-xs);
@@ -774,15 +652,11 @@
   opacity: 0;
   transition: opacity var(--dur-fast) var(--ease);
   white-space: nowrap;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   z-index: 10;
   font-variant-numeric: tabular-nums;
 }
 
-.chart-tooltip.show {
-  opacity: 1;
-}
+.chart-tooltip.show { opacity: 1; }
 
 .chart-x-labels {
   display: flex;
@@ -797,14 +671,9 @@
   font-weight: 500;
 }
 
-/* ============================================================
-   СРАВНЕНИЕ
-   ============================================================ */
-.compare-title {
-  font-size: 15px;
-  font-weight: 700;
-  margin-bottom: 14px;
-}
+/* ---------- СРАВНЕНИЕ ---------- */
+
+.compare-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
 
 .compare-row {
   display: flex;
@@ -813,16 +682,9 @@
   padding: 10px 0;
 }
 
-.compare-row + .compare-row {
-  border-top: 0.5px solid var(--separator);
-}
+.compare-row + .compare-row { border-top: 0.5px solid var(--separator); }
 
-.compare-indicator {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+.compare-indicator { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
 .compare-label {
   font-size: 14px;
@@ -833,9 +695,7 @@
   text-overflow: ellipsis;
 }
 
-.compare-spark {
-  flex-shrink: 0;
-}
+.compare-spark { flex-shrink: 0; }
 
 .compare-value {
   font-size: 16px;
@@ -846,14 +706,10 @@
   font-variant-numeric: tabular-nums;
 }
 
-.compare-blur {
-  filter: blur(6px);
-  opacity: 0.6;
-}
+.compare-blur { filter: blur(6px); opacity: 0.6; }
 
-/* ============================================================
-   РЕКОРДЫ
-   ============================================================ */
+/* ---------- РЕКОРДЫ ---------- */
+
 .record-row {
   display: flex;
   align-items: center;
@@ -862,30 +718,13 @@
   font-size: 14px;
 }
 
-.record-row + .record-row {
-  border-top: 0.5px solid var(--separator);
-}
+.record-row + .record-row { border-top: 0.5px solid var(--separator); }
+.record-emoji { font-size: 20px; flex-shrink: 0; }
+.record-label { color: var(--text-dim); flex: 1; font-size: 13px; }
+.record-value { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
 
-.record-emoji {
-  font-size: 20px;
-  flex-shrink: 0;
-}
+/* ---------- ПРОФИЛЬ ---------- */
 
-.record-label {
-  color: var(--text-dim);
-  flex: 1;
-  font-size: 13px;
-}
-
-.record-value {
-  font-weight: 700;
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ============================================================
-   ПРОФИЛЬ
-   ============================================================ */
 .profile-header {
   display: flex;
   flex-direction: column;
@@ -903,7 +742,7 @@
   align-items: center;
   justify-content: center;
   font-size: 36px;
-  box-shadow: 0 8px 24px rgba(255, 45, 85, 0.3);
+  box-shadow: 0 8px 24px rgba(255,45,85,0.3);
   margin-bottom: 14px;
 }
 
@@ -925,9 +764,8 @@
   line-height: 1.4;
 }
 
-/* ============================================================
-   НАСТРОЙКИ
-   ============================================================ */
+/* ---------- НАСТРОЙКИ ---------- */
+
 .settings-group {
   background: var(--card);
   border-radius: var(--radius-md);
@@ -950,13 +788,8 @@
   font-family: var(--font);
 }
 
-.settings-item:active {
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.settings-item + .settings-item {
-  border-top: 0.5px solid var(--separator);
-}
+.settings-item:active { background: rgba(0,0,0,0.04); }
+.settings-item + .settings-item { border-top: 0.5px solid var(--separator); }
 
 .settings-icon {
   width: 32px;
@@ -970,16 +803,8 @@
   background: var(--bg);
 }
 
-.settings-label {
-  flex: 1;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text);
-}
-
-.settings-label-danger {
-  color: var(--danger);
-}
+.settings-label { flex: 1; font-size: 15px; font-weight: 500; color: var(--text); }
+.settings-label-danger { color: var(--danger); }
 
 .settings-value {
   font-size: 14px;
@@ -998,13 +823,12 @@
   line-height: 1;
 }
 
-/* ============================================================
-   МОДАЛКА
-   ============================================================ */
+/* ---------- МОДАЛКА ---------- */
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0,0,0,0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1015,10 +839,7 @@
   transition: opacity var(--dur) var(--ease);
 }
 
-.modal-backdrop.show {
-  opacity: 1;
-  pointer-events: auto;
-}
+.modal-backdrop.show { opacity: 1; pointer-events: auto; }
 
 .modal {
   background: var(--card);
@@ -1034,9 +855,7 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.modal-backdrop.show .modal {
-  transform: scale(1);
-}
+.modal-backdrop.show .modal { transform: scale(1); }
 
 .modal h3 {
   font-size: 19px;
@@ -1076,9 +895,74 @@
   text-transform: uppercase;
 }
 
-.modal input:focus {
+.modal input:focus { border-color: var(--accent); }
+
+/* ---------- ВЫБОР ПОЛА ---------- */
+
+.gender-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.gender-select {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.gender-btn {
+  flex: 1;
+  padding: 14px 8px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--separator);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: border-color var(--dur) var(--ease),
+              background var(--dur) var(--ease),
+              transform var(--dur-fast) var(--ease);
+  cursor: pointer;
+  font-family: var(--font);
+}
+
+.gender-btn:active { transform: scale(0.95); }
+
+.gender-btn.active {
+  background: var(--accent-bg);
   border-color: var(--accent);
 }
+
+.gender-btn[data-gender="f"].active {
+  background: #fff0f5;
+  border-color: #ff5e9c;
+}
+
+.gender-btn[data-gender="m"].active {
+  background: #eef2ff;
+  border-color: #5e7dff;
+}
+
+.gender-emoji {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.gender-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.gender-btn.active .gender-text { color: var(--accent); }
+.gender-btn[data-gender="f"].active .gender-text { color: #ff3d80; }
+.gender-btn[data-gender="m"].active .gender-text { color: #3d5eff; }
 
 .modal-btn {
   width: 100%;
@@ -1094,33 +978,12 @@
   font-family: var(--font);
 }
 
-.modal-btn:last-child {
-  margin-bottom: 0;
-}
-
-.modal-btn:active {
-  transform: scale(0.97);
-}
-
-.modal-btn.primary {
-  background: var(--accent);
-  color: #fff;
-}
-
-.modal-btn.secondary {
-  background: var(--bg);
-  color: var(--text);
-}
-
-.modal-btn.danger {
-  background: var(--danger-bg);
-  color: var(--danger-text);
-}
-
-.modal-btn:disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
+.modal-btn:last-child { margin-bottom: 0; }
+.modal-btn:active { transform: scale(0.97); }
+.modal-btn.primary { background: var(--accent); color: #fff; }
+.modal-btn.secondary { background: var(--bg); color: var(--text); }
+.modal-btn.danger { background: var(--danger-bg); color: var(--danger-text); }
+.modal-btn:disabled { opacity: 0.4; pointer-events: none; }
 
 .code-display {
   background: var(--bg);
@@ -1146,17 +1009,8 @@
   line-height: 1.4;
 }
 
-/* ============================================================
-   PDF TEMPLATE
-   ============================================================
-   ВАЖНО: раньше было `left: -10000px` — html2canvas не рендерил
-   такой элемент и получался пустой PDF.
+/* ---------- PDF ---------- */
 
-   Теперь шаблон лежит под всем контентом через z-index: -1
-   и полностью прозрачен (opacity: 0). Для html2canvas он
-   "видимый" (не display: none, не за экраном), для
-   пользователя — невидим.
-   ============================================================ */
 #pdfTemplate {
   position: fixed;
   top: 0;
@@ -1171,7 +1025,6 @@
   visibility: hidden;
 }
 
-/* Класс, который включает шаблон на время генерации PDF */
 #pdfTemplate.pdf-rendering {
   visibility: visible;
   opacity: 1;
@@ -1180,7 +1033,7 @@
 .pdf-cover {
   padding: 60px 50px 40px;
   text-align: center;
-  background: linear-gradient(180deg, #fff5f7 0%, #ffffff 100%);
+  background: linear-gradient(180deg, #fff5f7 0%, #fff 100%);
 }
 
 .pdf-cover h1 {
@@ -1191,45 +1044,14 @@
   margin-bottom: 8px;
 }
 
-.pdf-cover .pdf-sub {
-  font-size: 18px;
-  color: #8e8e93;
-  margin-bottom: 30px;
-}
+.pdf-cover .pdf-sub { font-size: 18px; color: #8e8e93; margin-bottom: 30px; }
+.pdf-cover .pdf-emoji { font-size: 80px; line-height: 1; margin-bottom: 20px; }
+.pdf-cover .pdf-names { font-size: 24px; font-weight: 700; margin-bottom: 6px; color: #1c1c1e; }
+.pdf-cover .pdf-days { font-size: 14px; color: #8e8e93; }
+.pdf-section { padding: 30px 50px; }
+.pdf-section h2 { font-size: 20px; font-weight: 700; margin-bottom: 18px; color: #1c1c1e; }
 
-.pdf-cover .pdf-emoji {
-  font-size: 80px;
-  line-height: 1;
-  margin-bottom: 20px;
-}
-
-.pdf-cover .pdf-names {
-  font-size: 24px;
-  font-weight: 700;
-  margin-bottom: 6px;
-  color: #1c1c1e;
-}
-
-.pdf-cover .pdf-days {
-  font-size: 14px;
-  color: #8e8e93;
-}
-
-.pdf-section {
-  padding: 30px 50px;
-}
-
-.pdf-section h2 {
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 18px;
-  color: #1c1c1e;
-}
-
-.pdf-metrics {
-  display: flex;
-  gap: 16px;
-}
+.pdf-metrics { display: flex; gap: 16px; }
 
 .pdf-metric {
   flex: 1;
@@ -1247,16 +1069,9 @@
   line-height: 1.1;
 }
 
-.pdf-metric .pdf-metric-label {
-  font-size: 12px;
-  color: #8e8e93;
-  margin-top: 4px;
-}
+.pdf-metric .pdf-metric-label { font-size: 12px; color: #8e8e93; margin-top: 4px; }
 
-.pdf-moments {
-  list-style: none;
-  padding: 0;
-}
+.pdf-moments { list-style: none; padding: 0; }
 
 .pdf-moments li {
   font-size: 14px;
@@ -1266,15 +1081,9 @@
   line-height: 1.5;
 }
 
-.pdf-moments li:last-child {
-  border-bottom: none;
-}
+.pdf-moments li:last-child { border-bottom: none; }
 
-.pdf-achievements {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
+.pdf-achievements { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 .pdf-ach {
   border-left: 4px solid #ff2d55;
@@ -1295,29 +1104,25 @@
   line-height: 1.6;
 }
 
-/* ============================================================
-   ЖУРНАЛ ОШИБОК
-   ============================================================ */
+/* ---------- ЖУРНАЛ ОШИБОК ---------- */
+
 .lm-error-banner {
   position: fixed;
   left: 12px;
   right: 12px;
   bottom: calc(var(--safe-bottom) + 84px);
-  background: rgba(255, 59, 48, 0.96);
+  background: rgba(255,59,48,0.96);
   color: #fff;
   border-radius: var(--radius-md);
   padding: 12px 14px;
   font-size: 13px;
   line-height: 1.35;
   z-index: 99998;
-  box-shadow: 0 8px 24px rgba(255, 59, 48, 0.35);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 8px 24px rgba(255,59,48,0.35);
   transform: translateY(20px);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s var(--ease),
-              transform 0.3s var(--ease);
+  transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
   cursor: pointer;
   max-height: 180px;
   overflow: hidden;
@@ -1345,7 +1150,7 @@
 }
 
 .lm-error-close {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255,255,255,0.2);
   color: #fff;
   width: 24px;
   height: 24px;
@@ -1361,15 +1166,11 @@
   font-family: var(--font);
 }
 
-.lm-error-body {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
+.lm-error-body { display: flex; flex-direction: column; gap: 3px; }
 
 .lm-error-code {
   display: inline-block;
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0,0,0,0.25);
   padding: 2px 7px;
   border-radius: var(--radius-xs);
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
@@ -1380,10 +1181,7 @@
   margin-bottom: 4px;
 }
 
-.lm-error-desc {
-  font-weight: 600;
-  font-size: 12px;
-}
+.lm-error-desc { font-weight: 600; font-size: 12px; }
 
 .lm-error-msg {
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
@@ -1417,9 +1215,7 @@
   line-height: 1.4;
 }
 
-.error-log-item:last-child {
-  border-bottom: none;
-}
+.error-log-item:last-child { border-bottom: none; }
 
 .error-log-item-head {
   display: flex;
@@ -1439,17 +1235,8 @@
   border-radius: var(--radius-xs);
 }
 
-.error-log-item-time {
-  color: var(--text-dim);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-
-.error-log-item-desc {
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 2px;
-}
+.error-log-item-time { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+.error-log-item-desc { font-weight: 600; color: var(--text); margin-bottom: 2px; }
 
 .error-log-item-msg {
   color: var(--text-dim);
