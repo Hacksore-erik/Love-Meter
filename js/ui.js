@@ -34,7 +34,7 @@ function updateSyncDot(status) {
    СВАЙП-КАРУСЕЛЬ
    ============================================================ */
 
-const TAB_ORDER = ['home', 'awards', 'calendar', 'chart', 'profile'];
+const TAB_ORDER = ['home', 'awards', 'stats', 'profile'];
 let currentTab = 0;
 
 let swipe = {
@@ -58,7 +58,7 @@ function goToTab(index, animate) {
     if (index > TAB_ORDER.length - 1) index = TAB_ORDER.length - 1;
     currentTab = index;
 
-    const offset = -(index * 20);
+    const offset = -(index * (100 / TAB_ORDER.length));
 
     if (animate === false) {
       screensTrack.classList.add('no-anim');
@@ -85,8 +85,7 @@ function goToTab(index, animate) {
     // Ленивая отрисовка
     const tab = TAB_ORDER[index];
     if (tab === 'awards' && typeof renderAchievements === 'function') renderAchievements();
-    if (tab === 'calendar' && typeof renderCalendar === 'function') renderCalendar();
-    if (tab === 'chart' && typeof renderChart === 'function') renderChart();
+    if (tab === 'stats' && typeof renderStats === 'function') renderStats();
     if (tab === 'profile') {
       if (typeof renderProfile === 'function') renderProfile();
       if (typeof updateErrorLogCount === 'function') updateErrorLogCount();
@@ -535,7 +534,7 @@ function openAboutModal() {
 
   openModal(
     '<h3>Love Meter</h3>' +
-    '<p>Трекер эмоционального состояния пары.<br>Версия ' + (CONFIG.VERSION || '1.5') + ' • Режим: ' + mode + '</p>' +
+    '<p>Трекер эмоционального состояния пары.<br>Версия ' + (CONFIG.VERSION || '1.6') + ' • Режим: ' + mode + '</p>' +
     '<p style="font-size:12px;margin-bottom:20px;">Данные хранятся в браузере.</p>' +
     '<button type="button" class="modal-btn primary" data-action="close">Закрыть</button>'
   );
@@ -561,7 +560,7 @@ async function togglePrivacy() {
 
     renderProfile();
     renderAll();
-    if (isScreenActive('chart')) renderChart();
+    if (isScreenActive('stats') && typeof renderStats === 'function') renderStats();
   } catch (e) {
     if (typeof LM !== 'undefined') {
       LM.record('LM-023', e.message || 'togglePrivacy failed', '');
@@ -586,6 +585,63 @@ function onCoupleStatePeriodClick(period) {
   APP.coupleStatePeriod = period;
   storageSet(CONFIG.STORAGE.coupleStatePeriod, period);
   renderCoupleState();
+}
+
+
+/* ============================================================
+   ПЕРИОД (график) + ПАНЕЛЬ (Динамика/Календарь)
+   ============================================================ */
+
+function onStatsPanelChange(panel) {
+  try {
+    const seg = $('statsSeg');
+    if (seg) seg.setAttribute('data-active', panel);
+
+    document.querySelectorAll('.stats-seg-btn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.stats === panel);
+    });
+
+    document.querySelectorAll('.stats-panel').forEach(function (p) {
+      p.classList.toggle('active', p.dataset.panel === panel);
+    });
+
+    if (panel === 'dynamics' && typeof renderChart === 'function') {
+      renderStatsHero();
+      renderChart();
+      renderCompare();
+      renderRecords();
+    }
+    if (panel === 'calendar' && typeof renderCalendar === 'function') {
+      renderCalendar();
+    }
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-011', e.message || 'onStatsPanelChange failed', 'panel=' + panel);
+    }
+  }
+}
+
+function onPeriodChange(period) {
+  try {
+    if (period !== 'week' && period !== 'month' && period !== 'year') return;
+    APP.currentPeriod = period;
+
+    const seg = $('periodSeg');
+    if (seg) seg.setAttribute('data-active', period);
+
+    document.querySelectorAll('.period-seg-btn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.period === period);
+    });
+
+    renderStatsHero();
+    renderChart();
+    renderCompare();
+    renderRecords();
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-011', e.message || 'onPeriodChange failed', 'period=' + period);
+    }
+  }
 }
 
 
@@ -881,7 +937,7 @@ async function onInstallClick() {
 
 
 /* ============================================================
-   СОБЫТИЯ — каждый блок изолирован
+   СОБЫТИЯ
    ============================================================ */
 
 function safeBind(label, fn) {
@@ -897,7 +953,7 @@ function safeBind(label, fn) {
 
 function bindEvents() {
 
-  /* --- ТАБЫ (тап) --- */
+  /* --- ТАБЫ --- */
   safeBind('tabBar', function () {
     const tabBar = $('tabBar');
     if (!tabBar) return;
@@ -946,6 +1002,53 @@ function bindEvents() {
     if (voteChange) voteChange.addEventListener('click', onVoteChangeClick);
   });
 
+  /* --- ПЕРЕКЛЮЧАТЕЛЬ ДИНАМИКА / КАЛЕНДАРЬ --- */
+  safeBind('statsSeg', function () {
+    const seg = $('statsSeg');
+    if (!seg) return;
+    seg.addEventListener('click', function (e) {
+      const btn = e.target.closest('.stats-seg-btn');
+      if (!btn) return;
+      const target = btn.dataset.stats;
+      if (!target) return;
+      onStatsPanelChange(target);
+    });
+  });
+
+  /* --- ПЕРИОДЫ ГРАФИКА --- */
+  safeBind('periodSeg', function () {
+    const seg = $('periodSeg');
+    if (!seg) return;
+    seg.addEventListener('click', function (e) {
+      const btn = e.target.closest('.period-seg-btn');
+      if (!btn) return;
+      const target = btn.dataset.period;
+      if (!target) return;
+      onPeriodChange(target);
+    });
+  });
+
+  /* --- ГРАФИК: HOVER / TAP --- */
+  safeBind('chartHover', function () {
+    const chartSvg = $('chartSvg');
+    if (!chartSvg) return;
+
+    chartSvg.addEventListener('mouseover', function (e) {
+      const hover = e.target.closest('.chart-hover');
+      if (hover) onChartHover(hover);
+    });
+    chartSvg.addEventListener('mouseout', function (e) {
+      if (e.target.closest('.chart-hover')) hideChartTooltip();
+    });
+    chartSvg.addEventListener('touchstart', function (e) {
+      const hover = e.target.closest('.chart-hover');
+      if (!hover) return;
+      e.preventDefault();
+      onChartHover(hover);
+      setTimeout(hideChartTooltip, 2500);
+    }, { passive: false });
+  });
+
   /* --- КАЛЕНДАРЬ --- */
   safeBind('calGrid', function () {
     const calGrid = $('calGrid');
@@ -965,7 +1068,7 @@ function bindEvents() {
     if (calNext) calNext.addEventListener('click', nextMonth);
   });
 
-  /* --- ПЕРИОД ОБЩЕГО СОСТОЯНИЯ --- */
+  /* --- ПЕРИОД ОБЩЕГО СОСТОЯНИЯ (главная) --- */
   safeBind('coupleStateSeg', function () {
     const seg = $('coupleStateSegmented');
     if (seg) {
@@ -975,44 +1078,6 @@ function bindEvents() {
         onCoupleStatePeriodClick(btn.dataset.period);
       });
     }
-  });
-
-  /* --- ГРАФИК: ПЕРИОД --- */
-  safeBind('segmented', function () {
-    const segmented = $('segmented');
-    if (segmented) {
-      segmented.addEventListener('click', function (e) {
-        const btn = e.target.closest('.seg-btn');
-        if (!btn) return;
-        document.querySelectorAll('#segmented .seg-btn').forEach(function (b) {
-          b.classList.remove('active');
-        });
-        btn.classList.add('active');
-        APP.currentPeriod = btn.dataset.period;
-        renderChart();
-      });
-    }
-  });
-
-  /* --- ГРАФИК: HOVER --- */
-  safeBind('chartHover', function () {
-    const chartSvg = $('chartSvg');
-    if (!chartSvg) return;
-
-    chartSvg.addEventListener('mouseover', function (e) {
-      const hover = e.target.closest('.chart-hover');
-      if (hover) onChartHover(hover);
-    });
-    chartSvg.addEventListener('mouseout', function (e) {
-      if (e.target.closest('.chart-hover')) hideChartTooltip();
-    });
-    chartSvg.addEventListener('touchstart', function (e) {
-      const hover = e.target.closest('.chart-hover');
-      if (!hover) return;
-      e.preventDefault();
-      onChartHover(hover);
-      setTimeout(hideChartTooltip, 2000);
-    }, { passive: false });
   });
 
   /* --- ИНФО О СЕРДЦЕ --- */
