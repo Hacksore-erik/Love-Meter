@@ -499,31 +499,7 @@ function determineMyRole(code) {
     return;
   }
 
-  /* Случай 3: информации о создателе нет — смотрим на занятые слоты.
-     Проверяем ВСЕ дни, начиная с самого свежего. Ищем день,
-     где занят только ОДИН слот. Если нашли 'you' — я 'partner',
-     если нашли 'partner' — я 'you'. */
-  const allDates = Object.keys(APP.state.votes).sort().reverse();
-
-  for (let i = 0; i < allDates.length; i++) {
-    const v = APP.state.votes[allDates[i]];
-    if (!v) continue;
-
-    if (v.you && !v.partner) {
-      APP.myRole = 'partner';
-      storageSet(CONFIG.STORAGE.creator + code, 'other-device');
-      return;
-    }
-    if (v.partner && !v.you) {
-      APP.myRole = 'you';
-      storageSet(CONFIG.STORAGE.creator + code, APP.myId);
-      return;
-    }
-    if (v.you && v.partner) {
-      continue;
-    }
-  }
-
-  /* Случай 4: вообще нет данных — по умолчанию 'you' */
-  APP.myRole = 'you';
+  /* Случай 3: смотрим на состояние пары НА СЕРВЕРЕ, а не локально.
+     Функция станет async — вызывающий код уже её await'ит. */
+  APP.myRole = 'you'; /* временно, перезапишем ниже */
 }
