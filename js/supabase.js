@@ -364,11 +364,36 @@ function unsubscribeRealtime() {
    ============================================================ */
 function determineMyRole(code) {
   const creator = storageGet(CONFIG.STORAGE.creator + code);
+
+  /* Если это устройство создавало пару — роль 'you' */
   if (creator && creator === APP.myId) {
     APP.myRole = 'you';
-  } else if (creator) {
-    APP.myRole = 'partner';
-  } else {
-    APP.myRole = 'you';
+    return;
   }
+
+  /* Если пару создавал кто-то другой и мы знаем его id — роль 'partner' */
+  if (creator && creator !== 'other-device') {
+    APP.myRole = 'partner';
+    return;
+  }
+
+  /* Если информации о создателе нет — определяем по первому свободному слоту.
+     Смотрим на сегодняшний день: если в нём уже есть you, значит партнёр поставил
+     оценку со своей стороны, и мы должны быть partner. И наоборот. */
+  const today = APP.state.votes[todayStr()];
+  if (today) {
+    if (today.you && !today.partner) {
+      APP.myRole = 'partner';
+      storageSet(CONFIG.STORAGE.creator + code, 'other-device');
+      return;
+    }
+    if (today.partner && !today.you) {
+      APP.myRole = 'you';
+      storageSet(CONFIG.STORAGE.creator + code, APP.myId);
+      return;
+    }
+  }
+
+  /* Fallback — не можем определить, ставим 'partner' */
+  APP.myRole = 'partner';
 }
