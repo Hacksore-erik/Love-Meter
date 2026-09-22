@@ -584,11 +584,14 @@ async function exportPDF() {
         : '<div class="pdf-ach">🌱 Первый шаг — в процессе</div>';
     }
 
-    const pdfTemplate = $('pdfTemplate');
+const pdfTemplate = $('pdfTemplate');
     if (!pdfTemplate) {
       showToast('Шаблон PDF не найден');
       return;
     }
+
+    /* Включаем шаблон — он становится видимым для html2canvas */
+    pdfTemplate.classList.add('pdf-rendering');
 
     /* Принудительный пересчёт layout — критично для html2canvas */
     pdfTemplate.getBoundingClientRect();
@@ -623,8 +626,13 @@ async function exportPDF() {
       }
     };
 
-    await window.html2pdf().set(opt).from(pdfTemplate).save();
-    showToast('PDF сохранён 💕');
+    try {
+      await window.html2pdf().set(opt).from(pdfTemplate).save();
+      showToast('PDF сохранён 💕');
+    } finally {
+      /* Выключаем шаблон — снова прячем от пользователя */
+      pdfTemplate.classList.remove('pdf-rendering');
+    }
   } catch (e) {
     if (typeof LM !== 'undefined') {
       LM.record('LM-014', e.message || 'Ошибка html2pdf().save()', e.stack || '');
