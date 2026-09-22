@@ -23,8 +23,8 @@ const CONFIG = {
      4. Вставьте их ниже между кавычек
      ========================================================== */
   SUPABASE: {
-    url: '',
-    anonKey: ''
+    url: 'https://ogmjcqwhnxplfgwyjywg.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nbWpjcXdobnhwbGZnd3lqeXdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNjcyNjAsImV4cCI6MjEwNTY0MzI2MH0.yrhcqo9pSfyN8bIBnLBP66VcuXGVlWhmHp9vsbwl9JU'
   },
 
   /* ==========================================================
