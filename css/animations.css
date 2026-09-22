@@ -1,0 +1,274 @@
+/* ============================================================
+   ANIMATIONS — все keyframes и переходы приложения
+   ============================================================ */
+
+/* ============================================================
+   СЕРДЦЕ — сердцебиение
+   ============================================================ */
+@keyframes heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.04);
+  }
+  30% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.03);
+  }
+}
+
+/* ============================================================
+   СЕРДЦЕ — свечение вокруг
+   ============================================================ */
+@keyframes glowPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+}
+
+/* ============================================================
+   КНОПКА ГОЛОСА — появление ❤️
+   ============================================================ */
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.25);
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ============================================================
+   КОНФЕТТИ — вылетают вверх и исчезают
+   ============================================================ */
+@keyframes confettiFly {
+  0% {
+    transform: translate(0, 0) scale(0.5) rotate(0deg);
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx, 0px), var(--dy, -200px))
+               scale(1.2)
+               rotate(var(--rot, 360deg));
+    opacity: 0;
+  }
+}
+
+/* ============================================================
+   TOAST — появление снизу вверх
+   ============================================================ */
+@keyframes toastIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes toastOut {
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+}
+
+/* ============================================================
+   ПОЯВЛЕНИЕ ЭЛЕМЕНТОВ — fade-in снизу вверх
+   ============================================================ */
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   ПОЯВЛЕНИЕ ЭЛЕМЕНТОВ — просто fade
+   ============================================================ */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* ============================================================
+   МОДАЛКА — появление из центра
+   ============================================================ */
+@keyframes modalIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ============================================================
+   ГРАФИК — прорисовка кривой (обводка)
+   ============================================================ */
+@keyframes drawLine {
+  0% {
+    stroke-dashoffset: var(--path-length, 1000);
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ============================================================
+   ПУЛЬС — мягкое «дыхание» (для точки синхронизации)
+   ============================================================ */
+@keyframes softPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.15);
+  }
+}
+
+/* ============================================================
+   SHAKE — встряхивание (для ошибок)
+   ============================================================ */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+/* ============================================================
+   ПРИМЕНЕНИЕ АНИМАЦИЙ
+   ============================================================ */
+
+/* Плавное появление карточек при первом рендере */
+.card {
+  animation: fadeInUp var(--dur-slow) var(--ease-out) both;
+}
+
+/* Задержки для «каскадного» появления */
+.card:nth-child(1) { animation-delay: 0.03s; }
+.card:nth-child(2) { animation-delay: 0.06s; }
+.card:nth-child(3) { animation-delay: 0.09s; }
+.card:nth-child(4) { animation-delay: 0.12s; }
+
+/* Ачивки — каскад внутри сетки */
+.ach-card {
+  animation: fadeInUp var(--dur-slow) var(--ease-out) both;
+}
+
+.ach-card:nth-child(1) { animation-delay: 0.02s; }
+.ach-card:nth-child(2) { animation-delay: 0.04s; }
+.ach-card:nth-child(3) { animation-delay: 0.06s; }
+.ach-card:nth-child(4) { animation-delay: 0.08s; }
+.ach-card:nth-child(5) { animation-delay: 0.10s; }
+.ach-card:nth-child(6) { animation-delay: 0.12s; }
+.ach-card:nth-child(7) { animation-delay: 0.14s; }
+.ach-card:nth-child(8) { animation-delay: 0.16s; }
+.ach-card:nth-child(9) { animation-delay: 0.18s; }
+.ach-card:nth-child(10) { animation-delay: 0.20s; }
+
+/* Модалка при открытии */
+.modal-backdrop.show .modal {
+  animation: modalIn var(--dur) var(--ease-spring) both;
+}
+
+/* Точка синхронизации «дышит», когда оффлайн */
+.sync-dot.off {
+  animation: softPulse 2s ease-in-out infinite;
+}
+
+/* Ошибка ввода — встряхивание */
+.shake {
+  animation: shake 0.4s var(--ease);
+}
+
+/* Класс для проявления экрана с небольшой задержкой */
+.screen.active .screen-header,
+.screen.active .card,
+.screen.active .stats-row,
+.screen.active .achievements-grid,
+.screen.active .cal-header {
+  animation: fadeIn var(--dur) var(--ease-out) both;
+}
+
+/* График — обводка кривой «рисуется» слева направо */
+.chart-line-draw {
+  stroke-dasharray: var(--path-length, 1000);
+  animation: drawLine 0.9s var(--ease-out) forwards;
+}
+
+/* ============================================================
+   ОТКЛЮЧЕНИЕ ВСЕХ АНИМАЦИЙ ДЛЯ ПРЕДПОЧТЕНИЙ ПОЛЬЗОВАТЕЛЯ
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .ach-card,
+  .modal-backdrop.show .modal,
+  .screen.active .screen-header,
+  .screen.active .card,
+  .screen.active .stats-row,
+  .screen.active .achievements-grid,
+  .screen.active .cal-header {
+    animation: none !important;
+  }
+
+  .heart-svg-wrap,
+  .heart-glow {
+    animation: none !important;
+  }
+
+  .sync-dot.off {
+    animation: none !important;
+  }
+}
