@@ -151,6 +151,9 @@
   height: 100%;
   transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .screens-track.no-anim {
