@@ -25,6 +25,7 @@
   --accent-bg: #fff0f3;
   --accent-gradient: linear-gradient(135deg, #ff5e7d, #ff2d55);
   --accent-gradient-v: linear-gradient(180deg, #ff8fa3, #ff5e7d, #ff2d55);
+  --title-gradient: linear-gradient(135deg, #ff5e7d 0%, #ff2d55 55%, #a56bff 100%);
 
   --partner: #5e7dff;
   --partner-soft: #8ea2ff;
