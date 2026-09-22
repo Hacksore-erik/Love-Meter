@@ -58,18 +58,19 @@ function goToTab(index, animate) {
     if (index > TAB_ORDER.length - 1) index = TAB_ORDER.length - 1;
     currentTab = index;
 
-    const offset = -(index * (100 / TAB_ORDER.length));
+    const w = screens.clientWidth;
+    const offsetPx = -index * w;
 
     if (animate === false) {
       screensTrack.classList.add('no-anim');
-      screensTrack.style.transform = 'translateX(' + offset + '%)';
+      screensTrack.style.transform = 'translate3d(' + offsetPx + 'px, 0, 0)';
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
           screensTrack.classList.remove('no-anim');
         });
       });
     } else {
-      screensTrack.style.transform = 'translateX(' + offset + '%)';
+      screensTrack.style.transform = 'translate3d(' + offsetPx + 'px, 0, 0)';
     }
 
     const allTabs = tabBar.querySelectorAll('.tab-item');
@@ -150,7 +151,7 @@ function onTouchMove(e) {
     next = -(TAB_ORDER.length - 1) * w + (next + (TAB_ORDER.length - 1) * w) * 0.35;
   }
 
-  track.style.transform = 'translateX(' + next + 'px)';
+  track.style.transform = 'translate3d(' + next + 'px, 0, 0)';
 }
 
 function onTouchEnd() {
@@ -589,7 +590,7 @@ function onCoupleStatePeriodClick(period) {
 
 
 /* ============================================================
-   ПЕРИОД (график) + ПАНЕЛЬ (Динамика/Календарь)
+   ПЕРЕКЛЮЧАТЕЛИ ДИНАМИКА / КАЛЕНДАРЬ + ПЕРИОД
    ============================================================ */
 
 function onStatsPanelChange(panel) {
@@ -605,11 +606,11 @@ function onStatsPanelChange(panel) {
       p.classList.toggle('active', p.dataset.panel === panel);
     });
 
-    if (panel === 'dynamics' && typeof renderChart === 'function') {
-      renderStatsHero();
-      renderChart();
-      renderCompare();
-      renderRecords();
+    if (panel === 'dynamics') {
+      if (typeof renderStatsHero === 'function') renderStatsHero();
+      if (typeof renderChart === 'function') renderChart();
+      if (typeof renderCompare === 'function') renderCompare();
+      if (typeof renderRecords === 'function') renderRecords();
     }
     if (panel === 'calendar' && typeof renderCalendar === 'function') {
       renderCalendar();
@@ -633,10 +634,10 @@ function onPeriodChange(period) {
       b.classList.toggle('active', b.dataset.period === period);
     });
 
-    renderStatsHero();
-    renderChart();
-    renderCompare();
-    renderRecords();
+    if (typeof renderStatsHero === 'function') renderStatsHero();
+    if (typeof renderChart === 'function') renderChart();
+    if (typeof renderCompare === 'function') renderCompare();
+    if (typeof renderRecords === 'function') renderRecords();
   } catch (e) {
     if (typeof LM !== 'undefined') {
       LM.record('LM-011', e.message || 'onPeriodChange failed', 'period=' + period);
@@ -871,7 +872,7 @@ function onErrorLogAction(action) {
 
 
 /* ============================================================
-   PWA — без Service Worker на iOS
+   PWA
    ============================================================ */
 
 function setupPWA() {
@@ -898,8 +899,8 @@ function setupPWA() {
       if (reg && typeof reg.catch === 'function') {
         reg.catch(function () { /* тихо */ });
       }
-    } catch (e) { /* синхронное исключение */ }
-  } catch (e) { /* внешний предохранитель */ }
+    } catch (e) {}
+  } catch (e) {}
 }
 
 let deferredInstallPrompt = null;
@@ -1171,6 +1172,13 @@ function bindEvents() {
     window.addEventListener('offline', function () { updateSyncDot('off'); });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closeModal();
+    });
+
+    // Пересчёт позиции карусели при изменении размера окна / повороте
+    window.addEventListener('resize', function () {
+      try {
+        if (typeof goToTab === 'function') goToTab(currentTab, false);
+      } catch (e) {}
     });
   });
 
