@@ -13,15 +13,15 @@ function safeCall(code, label, fn) {
   }
 }
 
-/* Проверка, что ключевые функции определены */
 function checkGlobals() {
   var required = [
     'initCore', 'loadState', 'saveState', 'recalcStats',
     'computePartnerPercent', 'computeCouplePercent',
     'updateHeart', 'renderVoteButtons', 'renderCoupleState', 'renderAll',
+    'renderStats', 'renderStatsHero', 'renderChart', 'renderCompare', 'renderRecords',
+    'renderCalendar', 'renderInsight',
     'handleVote', 'onVoteChangeClick',
-    'initCalendar', 'renderCalendar', 'renderChart',
-    'renderAchievements', 'renderProfile',
+    'initCalendar', 'renderAchievements', 'renderProfile',
     'bindEvents', 'goToTab', 'showToast', 'updateSyncDot', 'updateUpdatedHint'
   ];
   var missing = [];
@@ -34,14 +34,12 @@ function checkGlobals() {
   return missing;
 }
 
-/* Аварийный fallback: навешивает таб-бар и голосование напрямую,
-   если основной bindEvents не сработал или упал */
 function fallbackBind() {
   try {
     var tabBar = document.getElementById('tabBar');
     if (tabBar && tabBar.getAttribute('data-fb-bound') !== '1') {
       tabBar.setAttribute('data-fb-bound', '1');
-      var ORDER = ['home', 'awards', 'calendar', 'chart', 'profile'];
+      var ORDER = ['home', 'awards', 'stats', 'profile'];
       tabBar.addEventListener('click', function (e) {
         var tab = e.target.closest('.tab-item');
         if (!tab) return;
@@ -53,19 +51,19 @@ function fallbackBind() {
           all[i].classList.toggle('active', i === idx);
         }
         var track = document.getElementById('screensTrack');
-        if (track) track.style.transform = 'translateX(-' + (idx * 20) + '%)';
+        if (track) {
+          var screensEl = document.getElementById('screens');
+          var w = screensEl ? screensEl.clientWidth : 0;
+          track.style.transform = 'translate3d(-' + (idx * w) + 'px, 0, 0)';
+        }
         var screens = document.querySelectorAll('.screen');
         if (screens[idx]) screens[idx].scrollTop = 0;
 
-        // Ленивая отрисовка — если функции есть
         if (ORDER[idx] === 'awards' && typeof renderAchievements === 'function') {
           try { renderAchievements(); } catch (e) {}
         }
-        if (ORDER[idx] === 'calendar' && typeof renderCalendar === 'function') {
-          try { renderCalendar(); } catch (e) {}
-        }
-        if (ORDER[idx] === 'chart' && typeof renderChart === 'function') {
-          try { renderChart(); } catch (e) {}
+        if (ORDER[idx] === 'stats' && typeof renderStats === 'function') {
+          try { renderStats(); } catch (e) {}
         }
         if (ORDER[idx] === 'profile' && typeof renderProfile === 'function') {
           try { renderProfile(); } catch (e) {}
@@ -101,7 +99,6 @@ function init() {
     initCore();
   });
 
-  /* Защита: если state всё ещё null — создаём минимальный */
   if (!APP.state) {
     APP.state = {
       names: CONFIG.DEFAULTS.names,
@@ -133,7 +130,7 @@ function init() {
     if (typeof bindEvents === 'function') bindEvents();
   });
 
-  /* ШАГ 4. АВАРИЙНЫЙ FALLBACK — гарантирует работу табов и голосования */
+  /* ШАГ 4. АВАРИЙНЫЙ FALLBACK */
   safeCall('LM-005', 'fallbackBind failed', function () {
     fallbackBind();
   });
@@ -148,11 +145,8 @@ function init() {
   safeCall('LM-009', 'renderAchievements failed', function () {
     if (typeof renderAchievements === 'function') renderAchievements();
   });
-  safeCall('LM-010', 'renderCalendar failed', function () {
-    if (typeof renderCalendar === 'function') renderCalendar();
-  });
-  safeCall('LM-011', 'renderChart failed', function () {
-    if (typeof renderChart === 'function') renderChart();
+  safeCall('LM-011', 'renderStats failed', function () {
+    if (typeof renderStats === 'function') renderStats();
   });
   safeCall('LM-012', 'renderProfile failed', function () {
     if (typeof renderProfile === 'function') renderProfile();
@@ -204,11 +198,8 @@ function init() {
               safeCall('LM-009', 'renderAchievements after sync', function () {
                 if (typeof renderAchievements === 'function') renderAchievements();
               });
-              safeCall('LM-010', 'renderCalendar after sync', function () {
-                if (typeof renderCalendar === 'function') renderCalendar();
-              });
-              safeCall('LM-011', 'renderChart after sync', function () {
-                if (typeof renderChart === 'function') renderChart();
+              safeCall('LM-011', 'renderStats after sync', function () {
+                if (typeof renderStats === 'function') renderStats();
               });
               safeCall('LM-012', 'renderProfile after sync', function () {
                 if (typeof renderProfile === 'function') renderProfile();
@@ -235,7 +226,7 @@ function init() {
       });
   }
 
-  /* Visibility — обновляем при возврате на вкладку */
+  /* Visibility — обновляем при возврате */
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible') return;
     safeCall('LM-026', 'visibilitychange', function () {
