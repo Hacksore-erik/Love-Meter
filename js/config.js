@@ -1,4 +1,11 @@
+/* ============================================================
+   CONFIG — константы приложения
+   ============================================================ */
+
 const CONFIG = {
+
+  /* Версия — для кэш-бастинга и отладки */
+  VERSION: '1.5',
 
   SUPABASE: {
     url: 'https://ogmjcqwhnxplfgwyjywg.supabase.co',
@@ -36,16 +43,16 @@ const CONFIG = {
   ],
 
   ACHIEVEMENTS: [
-    { id: 'first', emoji: '🌱', name: 'Первый шаг', desc: 'Поставить первую оценку', max: 1 },
-    { id: 'week', emoji: '🔥', name: 'Неделя огня', desc: '7 дней подряд', max: 7 },
-    { id: 'month', emoji: '💎', name: 'Месяц силы', desc: '30 дней подряд', max: 30 },
-    { id: 'perfect', emoji: '💯', name: 'Идеальный день', desc: 'Оба поставили 5', max: 1 },
-    { id: 'romantic', emoji: '💌', name: 'Романтик', desc: '10 дней с оценкой 5', max: 10 },
-    { id: 'historian', emoji: '📖', name: 'Историк', desc: '100 дней в приложении', max: 100 },
-    { id: 'rainbow', emoji: '🌈', name: 'Радуга', desc: 'Все 5 уровней за неделю', max: 5 },
-    { id: 'sync', emoji: '🤝', name: 'Синхрон', desc: '14 дней совпадения оценок', max: 14 },
-    { id: 'burning', emoji: '❤️‍🔥', name: 'Пылающее сердце', desc: 'Сердце >90% неделю', max: 7 },
-    { id: 'anniversary', emoji: '🎂', name: 'Годовщина', desc: '365 дней в приложении', max: 365 }
+    { id: 'first',       emoji: '🌱',  name: 'Первый шаг',       desc: 'Поставить первую оценку',        max: 1 },
+    { id: 'week',        emoji: '🔥',  name: 'Неделя огня',      desc: '7 дней подряд',                  max: 7 },
+    { id: 'month',       emoji: '💎',  name: 'Месяц силы',       desc: '30 дней подряд',                 max: 30 },
+    { id: 'perfect',     emoji: '💯',  name: 'Идеальный день',   desc: 'Оба поставили 5',                max: 1 },
+    { id: 'romantic',    emoji: '💌',  name: 'Романтик',         desc: '10 дней с оценкой 5',            max: 10 },
+    { id: 'historian',   emoji: '📖',  name: 'Историк',          desc: '100 дней в приложении',          max: 100 },
+    { id: 'rainbow',     emoji: '🌈',  name: 'Радуга',           desc: 'Все 5 уровней за неделю',        max: 5 },
+    { id: 'sync',        emoji: '🤝',  name: 'Синхрон',          desc: '14 дней совпадения оценок',      max: 14 },
+    { id: 'burning',     emoji: '❤️‍🔥', name: 'Пылающее сердце',  desc: 'Сердце >90% неделю',             max: 7 },
+    { id: 'anniversary', emoji: '🎂',  name: 'Годовщина',        desc: '365 дней в приложении',          max: 365 }
   ]
 };
 
