@@ -43,15 +43,11 @@ function initSupabaseAsync() {
   return APP.supabaseLoading;
 }
 
+/* Определение роли по owner_id — кто создал пару, тот 'you' */
 async function determineMyRole(code) {
-  const creator = storageGet(CONFIG.STORAGE.creator + code);
-
-  if (creator && creator === APP.myId) {
+  const localCreator = storageGet(CONFIG.STORAGE.creator + code);
+  if (localCreator && localCreator === APP.myId) {
     APP.myRole = 'you';
-    return;
-  }
-  if (creator && creator !== APP.myId && creator !== 'other-device') {
-    APP.myRole = 'partner';
     return;
   }
 
@@ -59,36 +55,25 @@ async function determineMyRole(code) {
     try {
       const res = await APP.supabaseClient
         .from('couples')
-        .select('name_you, name_partner')
+        .select('owner_id')
         .eq('id', code)
         .maybeSingle();
 
-      if (res.data) {
-        const hasYou = !!(res.data.name_you && String(res.data.name_you).trim());
-        const hasPartner = !!(res.data.name_partner && String(res.data.name_partner).trim());
-
-        if (hasYou && !hasPartner) {
+      if (res.data && res.data.owner_id) {
+        if (res.data.owner_id === APP.myId) {
+          APP.myRole = 'you';
+          storageSet(CONFIG.STORAGE.creator + code, APP.myId);
+        } else {
           APP.myRole = 'partner';
-          storageSet(CONFIG.STORAGE.creator + code, 'other-device');
-          return;
+          storageSet(CONFIG.STORAGE.creator + code, res.data.owner_id);
         }
-        if (!hasYou && hasPartner) {
-          APP.myRole = 'you';
-          storageSet(CONFIG.STORAGE.creator + code, APP.myId);
-          return;
-        }
-        if (!hasYou && !hasPartner) {
-          APP.myRole = 'you';
-          storageSet(CONFIG.STORAGE.creator + code, APP.myId);
-          return;
-        }
-        APP.myRole = 'partner';
         return;
       }
-    } catch (e) { /* fallback */ }
+    } catch (e) {}
   }
 
-  APP.myRole = 'you';
+  /* Fallback: если владелец неизвестен — мы партнёр */
+  APP.myRole = 'partner';
 }
 
 async function loadFromSupabase() {
@@ -237,6 +222,7 @@ async function createCoupleInSupabase(code) {
   try {
     const payload = {
       id: code,
+      owner_id: APP.myId,
       start_date: APP.state.startDate,
       name_you: getMyName(),
       name_partner: '',
