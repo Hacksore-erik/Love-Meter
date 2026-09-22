@@ -832,44 +832,148 @@ function hideChartTooltip() {
 
 function renderCompare() {
   try {
+    // Подписи имён
     const youLabelEl = $('compareYouLabel');
-    if (youLabelEl) {
-      const me = getMyName();
-      youLabelEl.textContent = (me && me !== CONFIG.DEFAULTS.myName) ? me : 'Ты';
-    }
+    const meName = getMyName();
+    const myDisplayName = (meName && meName !== CONFIG.DEFAULTS.myName) ? meName : 'Ты';
+    if (youLabelEl) youLabelEl.textContent = myDisplayName;
 
     const partnerLabelEl = $('comparePartnerLabel');
-    if (partnerLabelEl) {
-      const p = getPartnerName();
-      partnerLabelEl.textContent = (p && p !== CONFIG.DEFAULTS.partnerName) ? p : 'Партнёр';
-    }
+    const pName = getPartnerName();
+    const partnerDisplayName = (pName && pName !== CONFIG.DEFAULTS.partnerName) ? pName : 'Партнёр';
+    if (partnerLabelEl) partnerLabelEl.textContent = partnerDisplayName;
 
     const stats = getPeriodStats(APP.currentPeriod);
 
-    const youEl = $('compareYouVal');
-    if (youEl) {
-      youEl.textContent = stats.iHide
-        ? '•••'
-        : (stats.youValues.length ? stats.youAvg.toFixed(1) : '—');
-    }
+    // Значения
+    const youHasData = !stats.iHide && stats.youValues.length > 0;
+    const partnerHasData = !stats.partnerHide && stats.partnerValues.length > 0;
 
-    const partnerRow = $('comparePartner');
-    const partnerValEl = $('comparePartnerVal');
-    if (partnerRow && partnerValEl) {
-      if (stats.partnerHide) {
-        partnerRow.classList.add('compare-blur');
-        partnerValEl.textContent = stats.partnerValues.length ? '•••' : '—';
+    const youValEl = $('compareYouVal');
+    if (youValEl) {
+      if (stats.iHide) {
+        youValEl.textContent = '•••';
+      } else if (youHasData) {
+        youValEl.textContent = stats.youAvg.toFixed(1) + ' из 5';
       } else {
-        partnerRow.classList.remove('compare-blur');
-        partnerValEl.textContent = stats.partnerValues.length
-          ? stats.partnerAvg.toFixed(1)
-          : '—';
+        youValEl.textContent = '—';
       }
     }
 
+    const partnerValEl = $('comparePartnerVal');
+    if (partnerValEl) {
+      if (stats.partnerHide) {
+        partnerValEl.textContent = stats.partnerValues.length ? '•••' : '—';
+      } else if (partnerHasData) {
+        partnerValEl.textContent = stats.partnerAvg.toFixed(1) + ' из 5';
+      } else {
+        partnerValEl.textContent = '—';
+      }
+    }
+
+    // Размытие у партнёра, если скрыто
+    const partnerRow = $('comparePartner');
+    if (partnerRow) {
+      partnerRow.classList.toggle('compare-blur', !!stats.partnerHide);
+    }
+
+    // Статусы уровней
+    const youStatusEl = $('compareYouStatus');
+    if (youStatusEl) {
+      if (youHasData) {
+        const palette = heartPaletteFor(Math.round(stats.youAvg * 20));
+        youStatusEl.textContent = shortMoodLabel(Math.round(stats.youAvg * 20));
+        youStatusEl.className = 'compare-status mood-' + Math.min(5, Math.max(1, Math.round(stats.youAvg)));
+      } else {
+        youStatusEl.textContent = '';
+        youStatusEl.className = 'compare-status';
+      }
+    }
+
+    const partnerStatusEl = $('comparePartnerStatus');
+    if (partnerStatusEl) {
+      if (partnerHasData) {
+        partnerStatusEl.textContent = shortMoodLabel(Math.round(stats.partnerAvg * 20));
+        partnerStatusEl.className = 'compare-status mood-' + Math.min(5, Math.max(1, Math.round(stats.partnerAvg)));
+      } else {
+        partnerStatusEl.textContent = '';
+        partnerStatusEl.className = 'compare-status';
+      }
+    }
+
+    // Итоговая строка
+    const summaryEl = $('compareSummary');
+    if (summaryEl) {
+      summaryEl.innerHTML = buildCompareSummary(stats, myDisplayName, partnerDisplayName);
+    }
+
+    // Спарклайны
     drawSparkline('sparkYou', stats.iHide ? [] : stats.youValues, '#ff2d55');
     drawSparkline('sparkPartner', stats.partnerHide ? [] : stats.partnerValues, '#5e7dff');
-  } catch (e) {}
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-011', e.message || 'renderCompare failed', '');
+    }
+  }
+}
+
+/* Короткая метка уровня по проценту */
+function shortMoodLabel(pct) {
+  if (pct <= 20) return 'прохладно';
+  if (pct <= 40) return 'свежо';
+  if (pct <= 60) return 'стабильно';
+  if (pct <= 80) return 'тепло';
+  return 'жарко';
+}
+
+/* Итоговая строка сравнения */
+function buildCompareSummary(stats, myName, partnerName) {
+  const youHasData = !stats.iHide && stats.youValues.length > 0;
+  const partnerHasData = !stats.partnerHide && stats.partnerValues.length > 0;
+
+  // Ни у кого нет данных
+  if (!youHasData && !partnerHasData) {
+    if (stats.iHide || stats.partnerHide) {
+      return 'Недостаточно данных — часть оценок скрыта.';
+    }
+    return 'Пока нет оценок за этот период.';
+  }
+
+  // Есть только у одного
+  if (youHasData && !partnerHasData) {
+    if (stats.partnerHide) {
+      return '<b>' + partnerName + '</b> скрыл(а) свои оценки за этот период.';
+    }
+    return '<b>' + partnerName + '</b> пока не голосовал(а) за этот период.';
+  }
+  if (!youHasData && partnerHasData) {
+    if (stats.iHide) {
+      return 'Твои оценки за этот период скрыты от партнёра.';
+    }
+    return 'Ты пока не голосовал(а) за этот период.';
+  }
+
+  // У обоих есть данные — считаем разницу
+  const diff = stats.youAvg - stats.partnerAvg;
+  const absDiff = Math.abs(diff);
+
+  // Одинаково
+  if (absDiff < 0.15) {
+    return 'Вы чувствуете себя <b>одинаково</b> — средний уровень ' +
+           '<span class="cmp-accent">' + stats.youAvg.toFixed(1) + ' из 5</span>.';
+  }
+
+  // Ты теплее
+  if (diff > 0) {
+    return '<b>' + myName + '</b> в среднем чувствуешь себя на ' +
+           '<span class="cmp-accent">' + absDiff.toFixed(1) + '</span> ' +
+           'теплее, чем <b>' + partnerName + '</b>.';
+  }
+
+  // Партнёр теплее
+  return '<b>' + partnerName + '</b> в среднем чувствует себя на ' +
+         '<span class="cmp-accent">' + absDiff.toFixed(1) + '</span> ' +
+         'теплее, чем <b>' + myName + '</b>.';
 }
 
 function drawSparkline(id, vals, color) {
