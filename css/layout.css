@@ -31,27 +31,41 @@
   min-width: 0;
 }
 
+.app-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .app-title {
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.6px;
   line-height: 1.1;
-  background: var(--accent-gradient);
+  background-image: var(--title-gradient);
   -webkit-background-clip: text;
   background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  display: inline-block;
 }
 
-.app-subtitle {
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-top: 3px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 220px;
+.app-beta {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(135deg, #ff5e7d, #ff2d55);
+  box-shadow: 0 2px 6px rgba(255, 45, 85, 0.25);
+  line-height: 1;
+  flex-shrink: 0;
+  position: relative;
+  top: -1px;
 }
 
 /* ---------- Стрик-пилюля ---------- */
