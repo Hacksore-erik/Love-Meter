@@ -250,6 +250,12 @@
           <span class="settings-label">Установить приложение</span>
           <span class="settings-chevron">›</span>
         </button>
+        <button type="button" class="settings-item" id="errorLogBtn">
+          <span class="settings-icon">🐞</span>
+          <span class="settings-label">Журнал ошибок</span>
+          <span class="settings-value" id="errorLogCount">0</span>
+          <span class="settings-chevron">›</span>
+        </button>
         <button type="button" class="settings-item" id="aboutBtn">
           <span class="settings-icon">ℹ️</span>
           <span class="settings-label">О приложении</span>
@@ -333,6 +339,7 @@
 </div>
 
 <!-- ==================== СКРИПТЫ ==================== -->
+<script src="js/logger.js"></script>
 <script src="js/config.js"></script>
 <script src="js/core.js"></script>
 <script src="js/supabase.js"></script>
