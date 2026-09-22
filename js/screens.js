@@ -9,9 +9,9 @@
 
    Изменения в этой версии:
    - updateHeart() показывает состояние ПАРТНЁРА
-   - renderCoupleState() — новый блок внизу главного экрана
+   - renderCoupleState() — блок «Общее состояние пары»
    - renderCalendar/renderChart учитывают флаги скрытия
-   - openHeartInfo() — инфо-модалка о расчёте состояния партнёра
+   - инфо-модалка о сердце вынесена в ui.js (openHeartInfo)
    ============================================================ */
 
 
@@ -37,26 +37,22 @@ function updateHeart(animated) {
   let status, color, percentText;
 
   if (partner.hidden) {
-    /* Партнёр скрыл свои оценки */
     percentText = '🔒';
     status = 'Партнёр скрыл свои оценки';
     color = '#8e8e93';
   } else if (!partner.hasData) {
-    /* Партнёр не голосовал за 7 дней */
     percentText = '0%';
     status = 'Партнёр пока не отмечал настроение';
     color = '#8e8e93';
   } else {
     percentText = pct + '%';
 
-    /* Базовый статус по проценту */
     if (pct <= 20) { status = 'Нужен тёплый разговор 💬'; color = '#8e8e93'; }
     else if (pct <= 40) { status = 'Немного прохладно ❄️'; color = '#5e7dff'; }
     else if (pct <= 60) { status = 'Спокойно и стабильно 💜'; color = '#a56bff'; }
     else if (pct <= 80) { status = 'Между вами тепло 💗'; color = '#ff5e7d'; }
     else { status = 'Любовь пылает! ❤️‍🔥'; color = '#ff2d55'; }
 
-    /* Если партнёр голосовал не сегодня — уточняем */
     if (!partner.votedToday && partner.lastVoteDaysAgo !== null) {
       const days = partner.lastVoteDaysAgo;
       let daysText;
@@ -76,29 +72,7 @@ function updateHeart(animated) {
 
 
 /* ============================================================
-   ГЛАВНАЯ — ИНФО О РАСЧЁТЕ СОСТОЯНИЯ ПАРТНЁРА
-   ============================================================ */
-function openHeartInfo() {
-  const body = ''
-    + '<div class="info-block">'
-    + '<p>Мы берём оценки, которые партнёр поставил за последние <b>7 дней</b>, и находим среднее. Затем умножаем на 20 — получаем процент от 0 до 100%.</p>'
-    + '<div class="info-formula">среднее × 20 = <span class="info-accent">процент</span></div>'
-    + '<p>Например: <b>4 из 5</b> → <span class="info-accent">80%</span>.</p>'
-    + '<p><b>Что это значит:</b> чем выше процент, тем теплее партнёр чувствует себя рядом с тобой в последнюю неделю. Это не «оценка тебя», а его/её собственное состояние.</p>'
-    + '<p>Если партнёр не голосовал — процент не считается.</p>'
-    + '</div>';
-
-  openModal('Как считается состояние партнёра', body, [
-    { text: 'Понятно', class: 'primary', action: closeModal }
-  ]);
-}
-
-
-/* ============================================================
    ГЛАВНАЯ — БЛОК «ОБЩЕЕ СОСТОЯНИЕ ПАРЫ»
-   ============================================================
-   Показывает среднее по обоим партнёрам за 7 или 30 дней.
-   Переключатель периода — два таба внутри блока.
    ============================================================ */
 function renderCoupleState() {
   const percentEl = $('coupleStatePercent');
@@ -108,7 +82,6 @@ function renderCoupleState() {
 
   if (!percentEl || !statusEl) return;
 
-  /* Подсветка активного периода */
   segBtns.forEach(function (btn) {
     btn.classList.toggle('active', btn.dataset.period === APP.coupleStatePeriod);
   });
@@ -117,7 +90,6 @@ function renderCoupleState() {
 
   percentEl.textContent = result.hasData ? (result.percent + '%') : '—';
 
-  /* Цвет кольца в зависимости от процента */
   if (ringEl) {
     let ringColor = 'var(--text-soft)';
     if (result.hasData) {
@@ -130,7 +102,6 @@ function renderCoupleState() {
     ringEl.style.borderColor = ringColor;
   }
 
-  /* Статусный текст */
   let status;
   if (!result.hasData) {
     if (result.anyHidden) {
@@ -145,7 +116,6 @@ function renderCoupleState() {
     else if (result.percent <= 80) status = 'Между вами тепло 💗';
     else status = 'Любовь пылает! ❤️‍🔥';
 
-    /* Пояснение про скрытие */
     if (result.iHide && result.partnerHide) {
       status = status + ' • часть оценок скрыта у обоих';
     } else if (result.iHide) {
@@ -380,7 +350,6 @@ function renderCalendar() {
     let bothClass = '';
 
     if (v) {
-      /* Собираем видимые оценки — те, что не скрыты */
       const visibleVals = [];
       if (v.you && !iHide) visibleVals.push(v.you);
       if (v.partner && !partnerHide) visibleVals.push(v.partner);
@@ -388,17 +357,14 @@ function renderCalendar() {
       if (visibleVals.length) {
         const moodVal = Math.round(avg(visibleVals));
 
-        /* Кольцо — если в этот день есть оба голоса и оба не скрыты */
         if (v.you && v.partner && !iHide && !partnerHide) {
           bothClass = ' both';
         } else if (v.you && v.partner && (iHide || partnerHide)) {
-          /* Оба голосовали, но что-то скрыто — показываем особым классом */
           bothClass = ' both hidden-some';
         }
 
         circleStyle = 'background:' + CONFIG.MOODS[moodVal - 1] + ';color:#fff;';
       } else if (v.you || v.partner) {
-        /* Есть данные, но все скрыты */
         circleStyle = 'background:#f2f2f7;color:#8e8e93;';
       }
     }
@@ -702,7 +668,6 @@ function hideChartTooltip() {
 function renderCompare() {
   const stats = getPeriodStats(APP.currentPeriod);
 
-  /* Моё среднее */
   const youEl = $('compareYouVal');
   if (youEl) {
     if (stats.iHide) {
@@ -714,7 +679,6 @@ function renderCompare() {
     }
   }
 
-  /* Среднее партнёра */
   const partnerRow = $('comparePartner');
   const partnerValEl = $('comparePartnerVal');
 
@@ -730,7 +694,6 @@ function renderCompare() {
     }
   }
 
-  /* Спарклайны — если скрыто, не рисуем */
   drawSparkline('sparkYou', stats.iHide ? [] : stats.youValues, '#ff2d55');
   drawSparkline('sparkPartner', stats.partnerHide ? [] : stats.partnerValues, '#5e7dff');
 }
