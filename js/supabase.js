@@ -527,7 +527,3 @@ function determineMyRole(code) {
   /* Случай 4: вообще нет данных — по умолчанию 'you' */
   APP.myRole = 'you';
 }
-
-  /* Ничего не нашли — по умолчанию 'you' */
-  APP.myRole = 'you';
-}
