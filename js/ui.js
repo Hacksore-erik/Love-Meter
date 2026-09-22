@@ -790,19 +790,32 @@ function onErrorLogAction(action) {
 
 function setupPWA() {
   try {
-    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-      const swCode =
-        "self.addEventListener('install',function(e){self.skipWaiting();});" +
-        "self.addEventListener('activate',function(e){e.waitUntil(clients.claim());});" +
-        "self.addEventListener('fetch',function(e){" +
-        "if(e.request.method!=='GET')return;" +
-        "e.respondWith(fetch(e.request).catch(function(){return caches.match(e.request);}));" +
-        "});";
-      const blob = new Blob([swCode], { type: 'application/javascript' });
-      const url = URL.createObjectURL(blob);
-      navigator.serviceWorker.register(url).catch(function () {});
-    }
-  } catch (e) {}
+    if (!('serviceWorker' in navigator)) return;
+    if (location.protocol === 'file:') return;
+
+    // Safari iOS не поддерживает регистрацию SW из blob: URL —
+    // PWA на iOS ставится через «На экран Домой», кэш даёт сам Safari.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS) return;
+
+    const swCode =
+      "self.addEventListener('install',function(e){self.skipWaiting();});" +
+      "self.addEventListener('activate',function(e){e.waitUntil(clients.claim());});" +
+      "self.addEventListener('fetch',function(e){" +
+      "if(e.request.method!=='GET')return;" +
+      "e.respondWith(fetch(e.request).catch(function(){return caches.match(e.request);}));" +
+      "});";
+
+    const blob = new Blob([swCode], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+
+    try {
+      const reg = navigator.serviceWorker.register(url);
+      if (reg && typeof reg.catch === 'function') {
+        reg.catch(function () { /* тихо игнорируем */ });
+      }
+    } catch (e) { /* синхронное исключение — глушим */ }
+  } catch (e) { /* внешний предохранитель */ }
 }
 
 let deferredInstallPrompt = null;
@@ -922,17 +935,14 @@ function bindEvents() {
       document.querySelectorAll('#segmented .seg-btn').forEach(function (b) {
         b.classList.remove('active');
       });
-      passive btn.classList.add('active');
-      APP.currentPeriod = btn:.dataset.period;
-      renderChart false();
+      btn.classList.add('active');
+      APP.currentPeriod = btn.dataset.period;
+      renderChart();
     });
-  });
- }
+  }
 
-  const chartSvg = $('chartSvg ');
-  if ( }
-
-chartSvg) {
+  const chartSvg = $('chartSvg');
+  if (chartSvg) {
     chartSvg.addEventListener('mouseover', function (e) {
       const hover = e.target.closest('.chart-hover');
       if (hover) onChartHover(hover);
@@ -946,7 +956,10 @@ chartSvg) {
       e.preventDefault();
       onChartHover(hover);
       setTimeout(hideChartTooltip, 2000);
-    }, {  // Инфо о сердце
+    }, { passive: false });
+  }
+
+  // Инфо о сердце
   const heartInfoBtn = $('heartInfoBtn');
   if (heartInfoBtn) heartInfoBtn.addEventListener('click', openHeartInfo);
 
