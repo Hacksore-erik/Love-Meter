@@ -1,17 +1,6 @@
 /* ============================================================
    UI — интерфейсные функции и обработчики
-   ============================================================
-   Здесь собрано всё, что связано с пользовательским
-   взаимодействием вне четырёх экранов.
-
-   Изменения в этой версии:
-   - openNamesModal с двумя полями: «Твоё имя» и «Имя партнёра»
-   - renderProfile показывает имена обоих в отдельном блоке
-   - exportPDF: починка «белого листа» — шаблон становится
-     видимым на момент генерации через opacity: 0
-   - openModal: уже починен от «скачка» (двойной RAF)
    ============================================================ */
-
 
 /* ============================================================
    TOAST
@@ -34,7 +23,6 @@ function showToast(msg, duration) {
   } catch (e) { /* игнорируем */ }
 }
 
-
 /* ============================================================
    SYNC-ИНДИКАТОР
    ============================================================ */
@@ -55,7 +43,6 @@ function updateSyncDot(status) {
     dot.title = 'Локальный режим';
   }
 }
-
 
 /* ============================================================
    НАВИГАЦИЯ
@@ -89,12 +76,10 @@ function isScreenActive(name) {
   return !!(s && s.classList.contains('active'));
 }
 
-
 /* ============================================================
    ПРОФИЛЬ
    ============================================================ */
 function renderProfile() {
-  /* Заголовок профиля — общее имя пары */
   const pn = $('profileNames');
   if (pn) {
     pn.textContent = buildCoupleTitle();
@@ -107,27 +92,23 @@ function renderProfile() {
     sub.textContent = 'Вместе • ' + days + ' дней в Love Meter';
   }
 
-  /* Строки имён */
   const youEl = $('profileYouName');
   if (youEl) youEl.textContent = getMyName();
 
   const partnerEl = $('profilePartnerName');
   if (partnerEl) partnerEl.textContent = getPartnerName();
 
-  /* Приватность */
   const pv = $('privacyValue');
   if (pv) {
     pv.textContent = APP.state.hideMyVotes ? 'Скрыто' : 'Открыто';
   }
 
-  /* Код пары */
   const cb = $('coupleBtnValue');
   if (cb) {
     cb.textContent = APP.coupleId ? 'Код: ' + APP.coupleId : 'Не подключена';
   }
 }
 
-/* Общее название пары для шапки профиля */
 function buildCoupleTitle() {
   const you = getMyName();
   const partner = getPartnerName();
@@ -138,21 +119,17 @@ function buildCoupleTitle() {
   if (youDefault && partnerDefault) {
     return CONFIG.DEFAULTS.names;
   }
-
   if (partnerDefault) {
     return you;
   }
-
   if (youDefault) {
     return partner;
   }
-
   return you + ' & ' + partner;
 }
 
-
 /* ============================================================
-   МОДАЛКА — открыть/закрыть
+   МОДАЛКА
    ============================================================ */
 function openModal(htmlContent) {
   try {
@@ -179,7 +156,6 @@ function closeModal() {
   const modal = $('coupleModal');
   if (modal) modal.classList.remove('show');
 }
-
 
 /* ============================================================
    МОДАЛКА — ПАРА
@@ -275,6 +251,10 @@ async function onCoupleModalAction(action) {
       return;
     }
 
+    /* Роль 'you' — ДО createCoupleInSupabase,
+       чтобы имя писалась в правильный столбец */
+    APP.myRole = 'you';
+
     const code = generateCoupleCode();
     const ok = await createCoupleInSupabase(code);
     if (!ok) {
@@ -288,7 +268,6 @@ async function onCoupleModalAction(action) {
     APP.coupleId = code;
     storageSet(CONFIG.STORAGE.couple, code);
     storageSet(CONFIG.STORAGE.creator + code, APP.myId);
-    APP.myRole = 'you';
 
     await syncAllLocalVotesToSupabase();
     subscribeRealtime();
@@ -325,9 +304,15 @@ async function onCoupleModalAction(action) {
 
     APP.coupleId = code;
     storageSet(CONFIG.STORAGE.couple, code);
-    determineMyRole(code);
+
+    /* determineMyRole теперь асинхронная */
+    await determineMyRole(code);
 
     await loadFromSupabase();
+
+    /* Пишем своё имя в свой столбец на сервере */
+    await pushMyName();
+
     subscribeRealtime();
     updateSyncDot('on');
     closeModal();
@@ -348,9 +333,8 @@ function generateCoupleCode() {
   return s;
 }
 
-
 /* ============================================================
-   МОДАЛКА — РЕДАКТОР ИМЁН (два поля)
+   МОДАЛКА — ИМЕНА
    ============================================================ */
 function openNamesModal() {
   openModal(
@@ -423,7 +407,6 @@ function escapeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
-
 /* ============================================================
    МОДАЛКА — ИНФО
    ============================================================ */
@@ -442,9 +425,8 @@ function openAboutModal() {
   );
 }
 
-
 /* ============================================================
-   ПРИВАТНОСТЬ ОЦЕНОК
+   ПРИВАТНОСТЬ
    ============================================================ */
 async function togglePrivacy() {
   try {
@@ -476,9 +458,8 @@ async function togglePrivacy() {
   }
 }
 
-
 /* ============================================================
-   СБРОС ВСЕХ ДАННЫХ
+   СБРОС ДАННЫХ
    ============================================================ */
 function resetAllData() {
   if (!confirm('Сбросить ВСЕ данные приложения? Это необратимо.')) return;
@@ -489,9 +470,8 @@ function resetAllData() {
   location.reload();
 }
 
-
 /* ============================================================
-   ПЕРЕКЛЮЧАТЕЛЬ ПЕРИОДА БЛОКА ПАРЫ
+   ПЕРИОД БЛОКА ПАРЫ
    ============================================================ */
 function onCoupleStatePeriodClick(period) {
   if (period !== 'week' && period !== 'month') return;
@@ -502,16 +482,8 @@ function onCoupleStatePeriodClick(period) {
   renderCoupleState();
 }
 
-
 /* ============================================================
    ЭКСПОРТ PDF
-   ============================================================
-   Починка пустого PDF:
-   1. Шаблон #pdfTemplate в CSS лежит не за экраном,
-      а с opacity: 0 и z-index: -1 — html2canvas его видит.
-   2. Перед save() принудительно пересчитываем layout.
-   3. Обёрнуто в двойной RAF, чтобы дать браузеру
-      отрисовать контент перед снятием.
    ============================================================ */
 let html2pdfLoading = null;
 
@@ -584,19 +556,15 @@ async function exportPDF() {
         : '<div class="pdf-ach">🌱 Первый шаг — в процессе</div>';
     }
 
-const pdfTemplate = $('pdfTemplate');
+    const pdfTemplate = $('pdfTemplate');
     if (!pdfTemplate) {
       showToast('Шаблон PDF не найден');
       return;
     }
 
-    /* Включаем шаблон — он становится видимым для html2canvas */
     pdfTemplate.classList.add('pdf-rendering');
-
-    /* Принудительный пересчёт layout — критично для html2canvas */
     pdfTemplate.getBoundingClientRect();
 
-    /* Ждём кадр, чтобы браузер применил размеры */
     await new Promise(function (resolve) {
       requestAnimationFrame(function () {
         requestAnimationFrame(resolve);
@@ -630,7 +598,6 @@ const pdfTemplate = $('pdfTemplate');
       await window.html2pdf().set(opt).from(pdfTemplate).save();
       showToast('PDF сохранён 💕');
     } finally {
-      /* Выключаем шаблон — снова прячем от пользователя */
       pdfTemplate.classList.remove('pdf-rendering');
     }
   } catch (e) {
@@ -697,7 +664,6 @@ function collectMoments() {
 
   return moments;
 }
-
 
 /* ============================================================
    ЖУРНАЛ ОШИБОК
@@ -801,7 +767,6 @@ function onErrorLogAction(action) {
   }
 }
 
-
 /* ============================================================
    PWA
    ============================================================ */
@@ -864,13 +829,11 @@ async function onInstallClick() {
   showToast('iOS: Поделиться → «На экран Домой»', 3500);
 }
 
-
 /* ============================================================
    ОБРАБОТЧИКИ СОБЫТИЙ
    ============================================================ */
 function bindEvents() {
 
-  /* ---------- Tab bar ---------- */
   const tabBar = $('tabBar');
   if (tabBar) {
     tabBar.addEventListener('click', function (e) {
@@ -880,7 +843,6 @@ function bindEvents() {
     });
   }
 
-  /* ---------- Кнопки голосования ---------- */
   const voteBtns = document.querySelectorAll('.vote-btn');
   voteBtns.forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -890,7 +852,6 @@ function bindEvents() {
     });
   });
 
-  /* ---------- Календарь ---------- */
   const calGrid = $('calGrid');
   if (calGrid) {
     calGrid.addEventListener('click', function (e) {
@@ -907,7 +868,6 @@ function bindEvents() {
   const calNext = $('calNext');
   if (calNext) calNext.addEventListener('click', nextMonth);
 
-  /* ---------- Переключатель периода блока пары ---------- */
   const coupleStateSeg = $('coupleStateSegmented');
   if (coupleStateSeg) {
     coupleStateSeg.addEventListener('click', function (e) {
@@ -917,7 +877,6 @@ function bindEvents() {
     });
   }
 
-  /* ---------- Segmented control графика ---------- */
   const segmented = $('segmented');
   if (segmented) {
     segmented.addEventListener('click', function (e) {
@@ -932,7 +891,6 @@ function bindEvents() {
     });
   }
 
-  /* ---------- График — интерактив ---------- */
   const chartSvg = $('chartSvg');
   if (chartSvg) {
     chartSvg.addEventListener('mouseover', function (e) {
@@ -951,7 +909,6 @@ function bindEvents() {
     }, { passive: false });
   }
 
-  /* ---------- Модалка — делегирование кнопок ---------- */
   const modalContent = $('coupleModalContent');
   if (modalContent) {
     modalContent.addEventListener('click', function (e) {
@@ -994,7 +951,6 @@ function bindEvents() {
     });
   }
 
-  /* ---------- Профиль ---------- */
   const coupleBtn = $('coupleBtn');
   if (coupleBtn) coupleBtn.addEventListener('click', openCoupleModal);
 
@@ -1019,12 +975,10 @@ function bindEvents() {
   const resetBtn = $('resetBtn');
   if (resetBtn) resetBtn.addEventListener('click', resetAllData);
 
-  /* ---------- Подписка на события logger ---------- */
   window.addEventListener('lm:error', function () {
     updateErrorLogCount();
   });
 
-  /* ---------- Online / Offline ---------- */
   window.addEventListener('online', function () {
     updateSyncDot(HAS_SUPABASE && APP.coupleId ? 'on' : 'local');
   });
@@ -1033,11 +987,9 @@ function bindEvents() {
     updateSyncDot('off');
   });
 
-  /* ---------- Escape ---------- */
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') closeModal();
   });
 
-  /* ---------- Счётчик ошибок при старте ---------- */
   updateErrorLogCount();
 }
