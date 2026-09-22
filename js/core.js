@@ -1,15 +1,16 @@
 /* ============================================================
    CORE — состояние, localStorage, утилиты, математика
    ============================================================
-   Этот файл отвечает только за данные и логику. Он не знает
-   ни про DOM, ни про UI, ни про сервер. Все функции чистые
-   или работают с APP.state. Загружается третьим, после
-   logger.js и config.js.
+   Файл отвечает только за данные и логику. Не знает про DOM,
+   UI и сервер. Все функции чистые или работают с APP.state.
 
-   Все ошибки логируются через LM.record() с кодами:
-   LM-001 — ошибка загрузки состояния
-   LM-002 — ошибка сохранения состояния
-   LM-027 — ошибка генерации UUID
+   Новые функции в этой версии:
+   - computePartnerPercent()  — состояние партнёра за 7 дней
+   - computeCouplePercent(p)  — состояние пары за 7 или 30 дней
+   - getPartnerHideFlag()     — скрыл ли партнёр свои оценки
+   - getMyHideFlag()          — скрыл ли я свои оценки
+
+   Убрано: computePercent() (старая формула с myVote).
    ============================================================ */
 
 /* ============================================================
@@ -21,6 +22,7 @@ const APP = {
   coupleId: null,
   myRole: 'you',
   currentPeriod: 'month',
+  coupleStatePeriod: 'week',   // период для блока «Общее состояние пары»
   calYear: null,
   calMonth: null,
   realtimeChannel: null,
@@ -144,14 +146,14 @@ function storageRemove(key) {
 }
 
 /* ============================================================
-   СОСТОЯНИЕ — создание, загрузка, сохранение
+   СОСТОЯНИЕ
    ============================================================ */
 function defaultState() {
   return {
     names: CONFIG.DEFAULTS.names,
     startDate: todayStr(),
     votes: {},
-    openMode: CONFIG.DEFAULTS.openMode,
+    hideMyVotes: CONFIG.DEFAULTS.hideMyVotes,
     streak: 0,
     totalVotes: 0
   };
@@ -173,8 +175,12 @@ function loadState() {
         if (typeof parsed.startDate !== 'string') {
           parsed.startDate = todayStr();
         }
-        if (typeof parsed.openMode !== 'boolean') {
-          parsed.openMode = false;
+        if (typeof parsed.hideMyVotes !== 'boolean') {
+          parsed.hideMyVotes = false;
+        }
+        /* Удаляем старое поле openMode, если осталось */
+        if ('openMode' in parsed) {
+          delete parsed.openMode;
         }
         return parsed;
       }
@@ -240,44 +246,162 @@ function getTodayVote() {
 }
 
 /* ============================================================
-   ПРОЦЕНТ ДЛЯ СЕРДЦА
-   ============================================================ */
-function computePercent() {
-  const today = new Date();
-  const last7 = [];
+   СКРЫТИЕ ОЦЕНОК — флаги
+   ============================================================
+   hideMyVotes — моё желание скрыть свои оценки от партнёра.
+   Партнёр видит мои оценки, только если я не включил этот флаг.
 
+   getMyHideFlag()      — мой флаг (из APP.state)
+   getPartnerHideFlag() — флаг партнёра (из state.partnerHideFlag)
+                          заполняется при загрузке с сервера и
+                          обновляется через realtime
+   ============================================================ */
+function getMyHideFlag() {
+  return !!APP.state.hideMyVotes;
+}
+
+function getPartnerHideFlag() {
+  return !!APP.state.partnerHideFlag;
+}
+
+/* ============================================================
+   СОСТОЯНИЕ ПАРТНЁРА ЗА 7 ДНЕЙ
+   ============================================================
+   Возвращает объект:
+     {
+       percent: 0..100,
+       hasData: bool,             — были ли хоть какие-то оценки
+       votedToday: bool,          — голосовал ли партнёр сегодня
+       lastVoteValue: 1..5|null,  — последняя оценка партнёра
+       lastVoteDaysAgo: number|null,
+       hidden: bool               — партнёр скрыл свои оценки
+     }
+
+   Процент считаем по среднему оценок партнёра за 7 дней:
+     percent = avg_partner_7 * 20
+   (avg 1..5 → 20..100)
+   Стрик в сердце не учитываем — это отдельная метрика.
+
+   Если партнёр скрыл свои оценки (hidden) — возвращаем
+   percent: 0, hasData: false, но hidden: true.
+   ============================================================ */
+function computePartnerPercent() {
+  const result = {
+    percent: 0,
+    hasData: false,
+    votedToday: false,
+    lastVoteValue: null,
+    lastVoteDaysAgo: null,
+    hidden: getPartnerHideFlag()
+  };
+
+  if (result.hidden) return result;
+
+  const today = new Date();
+  const partnerVals = [];
+  let lastValue = null;
+  let lastDate = null;
+
+  /* Ищем оценки партнёра за последние 7 дней */
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const key = fmtDate(d);
     const v = APP.state.votes[key];
 
-    if (v) {
-      const vals = [];
-      if (v.you) vals.push(v.you);
-      if (v.partner) vals.push(v.partner);
-      if (vals.length) last7.push(avg(vals));
+    if (v && v.partner) {
+      partnerVals.push(v.partner);
+
+      if (!lastDate) {
+        lastDate = d;
+        lastValue = v.partner;
+      }
+
+      if (i === 0) result.votedToday = true;
     }
   }
 
-  const avg7 = last7.length ? avg(last7) : 0;
-  const myVote = getTodayVote() || 0;
-  const streakPart = clamp(APP.state.streak, 0, 30) / 30 * 10;
+  if (partnerVals.length) {
+    result.hasData = true;
+    result.lastVoteValue = lastValue;
+    result.lastVoteDaysAgo = lastDate ? daysBetween(lastDate, today) : null;
 
-  if (!last7.length && !myVote) {
-    return 0;
+    const avgPartner = avg(partnerVals);
+    result.percent = clamp(Math.round(avgPartner * 20), 0, 100);
   }
 
-  const raw = avg7 * 20 * 0.6 + myVote * 20 * 0.3 + streakPart;
-  return clamp(Math.round(raw), 0, 100);
+  return result;
+}
+
+/* ============================================================
+   СОСТОЯНИЕ ПАРЫ ЗА ПЕРИОД
+   ============================================================
+   period: 'week' (7 дней) или 'month' (30 дней)
+
+   Считаем среднее по ВСЕМ оценкам обоих партнёров за период.
+     percent = avg_all * 20
+
+   Учитываем скрытие:
+   - Если я скрыл свои оценки → они не считаются в общий процент
+     (для партнёра и для меня — потому что скрываю от него).
+   - Если партнёр скрыл свои → его оценки не считаются.
+
+   Возвращает:
+     { percent, count, hasData, daysBack }
+   ============================================================ */
+function computeCouplePercent(period) {
+  period = period || APP.coupleStatePeriod;
+  const daysBack = period === 'month' ? 30 : 7;
+
+  const iHide = getMyHideFlag();
+  const partnerHide = getPartnerHideFlag();
+
+  const today = new Date();
+  const allVals = [];
+
+  for (let i = 0; i < daysBack; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = fmtDate(d);
+    const v = APP.state.votes[key];
+    if (!v) continue;
+
+    if (v.you && !iHide) allVals.push(v.you);
+    if (v.partner && !partnerHide) allVals.push(v.partner);
+  }
+
+  const result = {
+    percent: 0,
+    count: allVals.length,
+    hasData: allVals.length > 0,
+    daysBack: daysBack,
+    anyHidden: iHide || partnerHide,
+    iHide: iHide,
+    partnerHide: partnerHide
+  };
+
+  if (allVals.length) {
+    const a = avg(allVals);
+    result.percent = clamp(Math.round(a * 20), 0, 100);
+  }
+
+  return result;
 }
 
 /* ============================================================
    ДАННЫЕ ДЛЯ ГРАФИКА
+   ============================================================
+   Возвращает массив точек: { date, key, value, label }
+
+   week  — последние 7 дней
+   month — последние 30 дней
+   year  — 12 недель, средняя оценка за неделю
    ============================================================ */
 function getChartData(period) {
   const today = new Date();
   const points = [];
+  const iHide = getMyHideFlag();
+  const partnerHide = getPartnerHideFlag();
 
   if (period === 'week') {
     for (let i = 6; i >= 0; i--) {
@@ -289,8 +413,8 @@ function getChartData(period) {
       let val = null;
       if (v) {
         const vals = [];
-        if (v.you) vals.push(v.you);
-        if (v.partner) vals.push(v.partner);
+        if (v.you && !iHide) vals.push(v.you);
+        if (v.partner && !partnerHide) vals.push(v.partner);
         if (vals.length) val = avg(vals);
       }
 
@@ -311,8 +435,8 @@ function getChartData(period) {
       let val = null;
       if (v) {
         const vals = [];
-        if (v.you) vals.push(v.you);
-        if (v.partner) vals.push(v.partner);
+        if (v.you && !iHide) vals.push(v.you);
+        if (v.partner && !partnerHide) vals.push(v.partner);
         if (vals.length) val = avg(vals);
       }
 
@@ -335,8 +459,8 @@ function getChartData(period) {
       for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
         const v = APP.state.votes[fmtDate(d)];
         if (v) {
-          if (v.you) vals.push(v.you);
-          if (v.partner) vals.push(v.partner);
+          if (v.you && !iHide) vals.push(v.you);
+          if (v.partner && !partnerHide) vals.push(v.partner);
         }
       }
 
@@ -362,6 +486,9 @@ function getPeriodStats(period) {
   let bothCount = 0;
   let validCount = 0;
 
+  const iHide = getMyHideFlag();
+  const partnerHide = getPartnerHideFlag();
+
   for (let i = 0; i < points.length; i++) {
     const key = points[i].key;
     if (!key) continue;
@@ -382,7 +509,9 @@ function getPeriodStats(period) {
     bothCount: bothCount,
     validCount: validCount,
     youValues: youValues,
-    partnerValues: partnerValues
+    partnerValues: partnerValues,
+    iHide: iHide,
+    partnerHide: partnerHide
   };
 }
 
@@ -556,25 +685,23 @@ function getAchievementProgress(a) {
 }
 
 /* ============================================================
-   ИНИЦИАЛИЗАЦИЯ STATE И myId
+   ИНИЦИАЛИЗАЦИЯ
    ============================================================ */
 function initCore() {
-  /* Мой ID */
   APP.myId = storageGet(CONFIG.STORAGE.myId);
   if (!APP.myId) {
     APP.myId = uuid();
     storageSet(CONFIG.STORAGE.myId, APP.myId);
   }
 
-  /* Код пары (если сохранён ранее) */
   APP.coupleId = storageGet(CONFIG.STORAGE.couple) || null;
 
-  /* Загружаем состояние */
   APP.state = loadState();
 
-  /* Пересчитываем статистику */
-  recalcStats();
+  if (typeof APP.state.partnerHideFlag === 'undefined') {
+    APP.state.partnerHideFlag = false;
+  }
 
-  /* Сохраняем — на случай, если поля были добавлены впервые */
+  recalcStats();
   saveState();
 }
