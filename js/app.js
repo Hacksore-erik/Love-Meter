@@ -78,7 +78,7 @@ function init() {
   });
 
   safeCall('LM-026', 'updateSyncDot failed', function () {
-    updateSyncDot(HAS_SUPABASE ? 'local' : 'local');
+    updateSyncDot(APP.coupleId ? 'on' : 'local');
   });
 
   /* ШАГ 4. PWA */
