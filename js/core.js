@@ -1,19 +1,3 @@
-/* ============================================================
-   CORE — состояние, localStorage, утилиты, математика
-   ============================================================
-   Файл отвечает только за данные и логику. Не знает про DOM,
-   UI и сервер.
-
-   Изменения в этой версии:
-   - name_you / name_partner вместо общего names
-   - функции getMyName(), getPartnerName(), setMyName(),
-     setPartnerName(), parseNames() для обратной совместимости
-   - ключ для периода блока пары берётся из CONFIG.STORAGE
-   ============================================================ */
-
-/* ============================================================
-   ГЛОБАЛЬНОЕ СОСТОЯНИЕ
-   ============================================================ */
 const APP = {
   state: null,
   myId: null,
@@ -28,16 +12,10 @@ const APP = {
   supabaseLoading: null
 };
 
-/* ============================================================
-   УТИЛИТЫ — DOM
-   ============================================================ */
 function $(id) {
   return document.getElementById(id);
 }
 
-/* ============================================================
-   УТИЛИТЫ — ДАТЫ
-   ============================================================ */
 function pad(n) {
   return n < 10 ? '0' + n : '' + n;
 }
@@ -60,18 +38,15 @@ function daysBetween(a, b) {
 }
 
 const MONTHS_FULL = [
-  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+  'Январь','Февраль','Март','Апрель','Май','Июнь',
+  'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'
 ];
 
 const MONTHS_GENITIVE = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+  'января','февраля','марта','апреля','мая','июня',
+  'июля','августа','сентября','октября','ноября','декабря'
 ];
 
-/* ============================================================
-   УТИЛИТЫ — МАТЕМАТИКА
-   ============================================================ */
 function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
@@ -83,9 +58,6 @@ function avg(arr) {
   return sum / arr.length;
 }
 
-/* ============================================================
-   УТИЛИТЫ — UUID
-   ============================================================ */
 function uuid() {
   try {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -93,10 +65,9 @@ function uuid() {
     }
   } catch (e) {
     if (typeof LM !== 'undefined') {
-      LM.record('LM-027', 'crypto.randomUUID недоступен, используется fallback', e.message || '');
+      LM.record('LM-027', 'crypto.randomUUID недоступен', e.message || '');
     }
   }
-
   try {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       const r = Math.random() * 16 | 0;
@@ -104,22 +75,12 @@ function uuid() {
       return v.toString(16);
     });
   } catch (e) {
-    if (typeof LM !== 'undefined') {
-      LM.record('LM-027', 'Не удалось сгенерировать UUID', e.message || '');
-    }
     return 'fallback-' + Date.now() + '-' + Math.random().toString(36).substring(2, 10);
   }
 }
 
-/* ============================================================
-   УТИЛИТЫ — БЕЗОПАСНЫЙ LOCALSTORAGE
-   ============================================================ */
 function storageGet(key) {
-  try {
-    return localStorage.getItem(key);
-  } catch (e) {
-    return null;
-  }
+  try { return localStorage.getItem(key); } catch (e) { return null; }
 }
 
 function storageSet(key, value) {
@@ -128,32 +89,29 @@ function storageSet(key, value) {
     return true;
   } catch (e) {
     if (typeof LM !== 'undefined') {
-      LM.record('LM-002', e.message || 'Не удалось сохранить в localStorage', key);
+      LM.record('LM-002', e.message || 'Ошибка localStorage', key);
     }
     return false;
   }
 }
 
 function storageRemove(key) {
-  try {
-    localStorage.removeItem(key);
-    return true;
-  } catch (e) {
-    return false;
-  }
+  try { localStorage.removeItem(key); return true; } catch (e) { return false; }
 }
 
-/* ============================================================
-   СОСТОЯНИЕ
-   ============================================================ */
+/* ---------- СОСТОЯНИЕ ---------- */
+
 function defaultState() {
   return {
     names: CONFIG.DEFAULTS.names,
     myName: CONFIG.DEFAULTS.myName,
     partnerName: CONFIG.DEFAULTS.partnerName,
+    myGender: CONFIG.DEFAULTS.myGender,
+    partnerGender: CONFIG.DEFAULTS.partnerGender,
     startDate: todayStr(),
     votes: {},
     hideMyVotes: CONFIG.DEFAULTS.hideMyVotes,
+    partnerHideFlag: false,
     streak: 0,
     totalVotes: 0
   };
@@ -164,35 +122,23 @@ function loadState() {
 
   if (raw) {
     try {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') {
-        if (!parsed.votes || typeof parsed.votes !== 'object') {
-          parsed.votes = {};
-        }
-        if (typeof parsed.names !== 'string' || !parsed.names) {
-          parsed.names = CONFIG.DEFAULTS.names;
-        }
-        if (typeof parsed.myName !== 'string' || !parsed.myName) {
-          parsed.myName = CONFIG.DEFAULTS.myName;
-        }
-        if (typeof parsed.partnerName !== 'string' || !parsed.partnerName) {
-          parsed.partnerName = CONFIG.DEFAULTS.partnerName;
-        }
-        if (typeof parsed.startDate !== 'string') {
-          parsed.startDate = todayStr();
-        }
-        if (typeof parsed.hideMyVotes !== 'boolean') {
-          parsed.hideMyVotes = false;
-        }
-        /* Удаляем старое поле openMode, если осталось */
-        if ('openMode' in parsed) {
-          delete parsed.openMode;
-        }
-        return parsed;
+      const p = JSON.parse(raw);
+      if (p && typeof p === 'object') {
+        if (!p.votes || typeof p.votes !== 'object') p.votes = {};
+        if (typeof p.names !== 'string' || !p.names) p.names = CONFIG.DEFAULTS.names;
+        if (typeof p.myName !== 'string' || !p.myName) p.myName = CONFIG.DEFAULTS.myName;
+        if (typeof p.partnerName !== 'string' || !p.partnerName) p.partnerName = CONFIG.DEFAULTS.partnerName;
+        if (typeof p.myGender !== 'string') p.myGender = '';
+        if (typeof p.partnerGender !== 'string') p.partnerGender = '';
+        if (typeof p.startDate !== 'string') p.startDate = todayStr();
+        if (typeof p.hideMyVotes !== 'boolean') p.hideMyVotes = false;
+        if (typeof p.partnerHideFlag !== 'boolean') p.partnerHideFlag = false;
+        if ('openMode' in p) delete p.openMode;
+        return p;
       }
     } catch (e) {
       if (typeof LM !== 'undefined') {
-        LM.record('LM-001', e.message || 'Ошибка парсинга localStorage', CONFIG.STORAGE.state);
+        LM.record('LM-001', e.message || 'Ошибка парсинга localStorage');
       }
     }
   }
@@ -205,20 +151,8 @@ function saveState() {
   storageSet(CONFIG.STORAGE.state, JSON.stringify(APP.state));
 }
 
-/* ============================================================
-   ИМЕНА ПАРТНЁРОВ
-   ============================================================
-   Каждый партнёр видит:
-   - Своё имя в «Ты» (это state.myName)
-   - Имя партнёра в «Партнёр» (это state.partnerName)
+/* ---------- ИМЕНА ---------- */
 
-   На сервере хранятся два отдельных столбца:
-   - name_you     — имя того, кто создал пару (роль 'you')
-   - name_partner — имя того, кто подключился (роль 'partner')
-
-   Каждый партнёр пишет своё имя в свой столбец.
-   При чтении берётся чужой столбец.
-   ============================================================ */
 function getMyName() {
   return APP.state.myName || CONFIG.DEFAULTS.myName;
 }
@@ -235,49 +169,55 @@ function setMyName(name) {
   return true;
 }
 
-function setPartnerName(name) {
-  const trimmed = String(name || '').trim().substring(0, 30);
-  if (!trimmed) return false;
-  APP.state.partnerName = trimmed;
+/* ---------- ПОЛ ---------- */
+
+function getMyGender() {
+  return APP.state.myGender || '';
+}
+
+function getPartnerGender() {
+  return APP.state.partnerGender || '';
+}
+
+function setMyGender(g) {
+  if (g !== 'f' && g !== 'm') return false;
+  APP.state.myGender = g;
   saveState();
   return true;
 }
 
-/* Разбор старого формата «Аня & Максим» на два имени.
-   Используется при миграции с версии v1.0.
-   Если строка не содержит '&' — первое имя = вся строка,
-   второе = дефолт. */
-function parseNames(namesString) {
-  const s = String(namesString || '').trim();
-  if (!s) return { you: '', partner: '' };
-
-  const parts = s.split('&').map(function (p) { return p.trim(); });
-  if (parts.length >= 2) {
-    return { you: parts[0], partner: parts.slice(1).join(' & ') };
-  }
-
-  return { you: s, partner: '' };
+function setPartnerGender(g) {
+  APP.state.partnerGender = (g === 'f' || g === 'm') ? g : '';
+  saveState();
 }
 
-/* ============================================================
-   МАТЕМАТИКА ДАННЫХ
-   ============================================================ */
+function getMyGenderEmoji() {
+  const g = getMyGender();
+  return (g && CONFIG.GENDERS[g]) ? CONFIG.GENDERS[g].emoji : '🧑';
+}
+
+function getPartnerGenderEmoji() {
+  const g = getPartnerGender();
+  return (g && CONFIG.GENDERS[g]) ? CONFIG.GENDERS[g].emoji : '🧑';
+}
+
+function getPartnerVerb() {
+  const g = getPartnerGender();
+  return (g && CONFIG.GENDERS[g]) ? CONFIG.GENDERS[g].verb : 'поставил(а)';
+}
+
+/* ---------- МАТЕМАТИКА ---------- */
+
 function computeStreak(votes) {
   let streak = 0;
   const today = new Date();
-
   for (let i = 0; i < 365; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const key = fmtDate(d);
-
-    if (votes[key] && (votes[key].you || votes[key].partner)) {
-      streak++;
-    } else if (i > 0) {
-      break;
-    }
+    if (votes[key] && (votes[key].you || votes[key].partner)) streak++;
+    else if (i > 0) break;
   }
-
   return streak;
 }
 
@@ -296,18 +236,12 @@ function recalcStats() {
   APP.state.totalVotes = computeTotalVotes(APP.state.votes);
 }
 
-/* ============================================================
-   МОЯ СЕГОДНЯШНЯЯ ОЦЕНКА
-   ============================================================ */
 function getTodayVote() {
   const v = APP.state.votes[todayStr()];
   if (!v) return null;
   return APP.myRole === 'you' ? (v.you || null) : (v.partner || null);
 }
 
-/* ============================================================
-   СКРЫТИЕ ОЦЕНОК — флаги
-   ============================================================ */
 function getMyHideFlag() {
   return !!APP.state.hideMyVotes;
 }
@@ -316,9 +250,8 @@ function getPartnerHideFlag() {
   return !!APP.state.partnerHideFlag;
 }
 
-/* ============================================================
-   СОСТОЯНИЕ ПАРТНЁРА ЗА 7 ДНЕЙ
-   ============================================================ */
+/* ---------- РАСЧЁТЫ ДЛЯ ЭКРАНОВ ---------- */
+
 function computePartnerPercent() {
   const result = {
     percent: 0,
@@ -344,12 +277,7 @@ function computePartnerPercent() {
 
     if (v && v.partner) {
       partnerVals.push(v.partner);
-
-      if (!lastDate) {
-        lastDate = d;
-        lastValue = v.partner;
-      }
-
+      if (!lastDate) { lastDate = d; lastValue = v.partner; }
       if (i === 0) result.votedToday = true;
     }
   }
@@ -358,34 +286,25 @@ function computePartnerPercent() {
     result.hasData = true;
     result.lastVoteValue = lastValue;
     result.lastVoteDaysAgo = lastDate ? daysBetween(lastDate, today) : null;
-
-    const avgPartner = avg(partnerVals);
-    result.percent = clamp(Math.round(avgPartner * 20), 0, 100);
+    result.percent = clamp(Math.round(avg(partnerVals) * 20), 0, 100);
   }
 
   return result;
 }
 
-/* ============================================================
-   СОСТОЯНИЕ ПАРЫ ЗА ПЕРИОД
-   ============================================================ */
 function computeCouplePercent(period) {
   period = period || APP.coupleStatePeriod;
   const daysBack = period === 'month' ? 30 : 7;
-
   const iHide = getMyHideFlag();
   const partnerHide = getPartnerHideFlag();
-
   const today = new Date();
   const allVals = [];
 
   for (let i = 0; i < daysBack; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const key = fmtDate(d);
-    const v = APP.state.votes[key];
+    const v = APP.state.votes[fmtDate(d)];
     if (!v) continue;
-
     if (v.you && !iHide) allVals.push(v.you);
     if (v.partner && !partnerHide) allVals.push(v.partner);
   }
@@ -401,29 +320,24 @@ function computeCouplePercent(period) {
   };
 
   if (allVals.length) {
-    const a = avg(allVals);
-    result.percent = clamp(Math.round(a * 20), 0, 100);
+    result.percent = clamp(Math.round(avg(allVals) * 20), 0, 100);
   }
 
   return result;
 }
 
-/* ============================================================
-   ДАННЫЕ ДЛЯ ГРАФИКА
-   ============================================================ */
 function getChartData(period) {
   const today = new Date();
   const points = [];
   const iHide = getMyHideFlag();
   const partnerHide = getPartnerHideFlag();
 
-  if (period === 'week') {
-    for (let i = 6; i >= 0; i--) {
+  if (period === 'week' || period === 'month') {
+    const daysBack = period === 'week' ? 6 : 29;
+    for (let i = daysBack; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      const key = fmtDate(d);
-      const v = APP.state.votes[key];
-
+      const v = APP.state.votes[fmtDate(d)];
       let val = null;
       if (v) {
         const vals = [];
@@ -431,32 +345,9 @@ function getChartData(period) {
         if (v.partner && !partnerHide) vals.push(v.partner);
         if (vals.length) val = avg(vals);
       }
-
       points.push({
         date: d,
-        key: key,
-        value: val,
-        label: d.getDate() + '.' + (d.getMonth() + 1)
-      });
-    }
-  } else if (period === 'month') {
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const key = fmtDate(d);
-      const v = APP.state.votes[key];
-
-      let val = null;
-      if (v) {
-        const vals = [];
-        if (v.you && !iHide) vals.push(v.you);
-        if (v.partner && !partnerHide) vals.push(v.partner);
-        if (vals.length) val = avg(vals);
-      }
-
-      points.push({
-        date: d,
-        key: key,
+        key: fmtDate(d),
         value: val,
         label: d.getDate() + '.' + (d.getMonth() + 1)
       });
@@ -465,7 +356,6 @@ function getChartData(period) {
     for (let w = 11; w >= 0; w--) {
       const weekEnd = new Date(today);
       weekEnd.setDate(weekEnd.getDate() - w * 7);
-
       const weekStart = new Date(weekEnd);
       weekStart.setDate(weekStart.getDate() - 6);
 
@@ -490,9 +380,6 @@ function getChartData(period) {
   return points;
 }
 
-/* ============================================================
-   АГРЕГИРОВАННАЯ СТАТИСТИКА ЗА ПЕРИОД
-   ============================================================ */
 function getPeriodStats(period) {
   const points = getChartData(period);
   const youValues = [];
@@ -500,13 +387,9 @@ function getPeriodStats(period) {
   let bothCount = 0;
   let validCount = 0;
 
-  const iHide = getMyHideFlag();
-  const partnerHide = getPartnerHideFlag();
-
   for (let i = 0; i < points.length; i++) {
     const key = points[i].key;
     if (!key) continue;
-
     const v = APP.state.votes[key];
     if (!v) continue;
 
@@ -524,36 +407,29 @@ function getPeriodStats(period) {
     validCount: validCount,
     youValues: youValues,
     partnerValues: partnerValues,
-    iHide: iHide,
-    partnerHide: partnerHide
+    iHide: getMyHideFlag(),
+    partnerHide: getPartnerHideFlag()
   };
 }
 
-/* ============================================================
-   РЕКОРДЫ
-   ============================================================ */
 function computeRecords() {
   let best = null, bestVal = 0;
   let worst = null, worstVal = 6;
-
   const sorted = Object.keys(APP.state.votes).sort();
 
   for (let i = 0; i < sorted.length; i++) {
-    const k = sorted[i];
-    const v = APP.state.votes[k];
+    const v = APP.state.votes[sorted[i]];
     const vals = [];
     if (v.you) vals.push(v.you);
     if (v.partner) vals.push(v.partner);
-
     if (vals.length) {
       const a = avg(vals);
-      if (a > bestVal) { bestVal = a; best = k; }
-      if (a < worstVal) { worstVal = a; worst = k; }
+      if (a > bestVal) { bestVal = a; best = sorted[i]; }
+      if (a < worstVal) { worstVal = a; worst = sorted[i]; }
     }
   }
 
-  let longest = 0;
-  let current = 0;
+  let longest = 0, current = 0;
   for (let i = 0; i < sorted.length; i++) {
     const v = APP.state.votes[sorted[i]];
     if (v.you === 5 || v.partner === 5) {
@@ -565,24 +441,15 @@ function computeRecords() {
   }
 
   return {
-    bestDate: best,
-    bestValue: bestVal,
-    worstDate: worst,
-    worstValue: worstVal,
+    bestDate: best, bestValue: bestVal,
+    worstDate: worst, worstValue: worstVal,
     longestFive: longest
   };
 }
 
-/* ============================================================
-   ИНСАЙТ ДЛЯ МЕСЯЦА
-   ============================================================ */
 function computeMonthlyInsight(year, month) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  let sum = 0;
-  let count = 0;
-  let bestDay = null;
-  let bestVal = 0;
-  let bothDays = 0;
+  let sum = 0, count = 0, bestDay = null, bestVal = 0, bothDays = 0;
 
   for (let d = 1; d <= daysInMonth; d++) {
     const key = year + '-' + pad(month + 1) + '-' + pad(d);
@@ -599,7 +466,6 @@ function computeMonthlyInsight(year, month) {
       count++;
       if (a > bestVal) { bestVal = a; bestDay = d; }
     }
-
     if (v.you && v.partner) bothDays++;
   }
 
@@ -612,9 +478,6 @@ function computeMonthlyInsight(year, month) {
   };
 }
 
-/* ============================================================
-   ПРОГРЕСС ДОСТИЖЕНИЙ
-   ============================================================ */
 function getAchievementProgress(a) {
   const votes = APP.state.votes;
   const today = new Date();
@@ -622,19 +485,15 @@ function getAchievementProgress(a) {
   switch (a.id) {
     case 'first':
       return APP.state.totalVotes > 0 ? 1 : 0;
-
     case 'week':
       return Math.min(APP.state.streak, 7);
-
     case 'month':
       return Math.min(APP.state.streak, 30);
-
     case 'perfect':
       for (const k in votes) {
         if (votes[k].you === 5 && votes[k].partner === 5) return 1;
       }
       return 0;
-
     case 'romantic': {
       let c = 0;
       for (const k in votes) {
@@ -642,13 +501,8 @@ function getAchievementProgress(a) {
       }
       return Math.min(c, 10);
     }
-
-    case 'historian': {
-      const start = parseDate(APP.state.startDate);
-      const days = daysBetween(start, today) + 1;
-      return Math.min(days, 100);
-    }
-
+    case 'historian':
+      return Math.min(daysBetween(parseDate(APP.state.startDate), today) + 1, 100);
     case 'rainbow': {
       const levels = new Set();
       for (let i = 0; i < 7; i++) {
@@ -662,7 +516,6 @@ function getAchievementProgress(a) {
       }
       return levels.size;
     }
-
     case 'sync': {
       let c = 0;
       for (const k in votes) {
@@ -670,7 +523,6 @@ function getAchievementProgress(a) {
       }
       return Math.min(c, 14);
     }
-
     case 'burning': {
       let c = 0;
       for (let i = 0; i < 7; i++) {
@@ -686,21 +538,15 @@ function getAchievementProgress(a) {
       }
       return c;
     }
-
-    case 'anniversary': {
-      const start = parseDate(APP.state.startDate);
-      const days = daysBetween(start, today) + 1;
-      return Math.min(days, 365);
-    }
-
+    case 'anniversary':
+      return Math.min(daysBetween(parseDate(APP.state.startDate), today) + 1, 365);
     default:
       return 0;
   }
 }
 
-/* ============================================================
-   ИНИЦИАЛИЗАЦИЯ
-   ============================================================ */
+/* ---------- ИНИЦИАЛИЗАЦИЯ ---------- */
+
 function initCore() {
   APP.myId = storageGet(CONFIG.STORAGE.myId);
   if (!APP.myId) {
@@ -709,14 +555,8 @@ function initCore() {
   }
 
   APP.coupleId = storageGet(CONFIG.STORAGE.couple) || null;
-
   APP.state = loadState();
 
-  if (typeof APP.state.partnerHideFlag === 'undefined') {
-    APP.state.partnerHideFlag = false;
-  }
-
-  /* Период блока пары — из localStorage */
   const savedPeriod = storageGet(CONFIG.STORAGE.coupleStatePeriod);
   if (savedPeriod === 'week' || savedPeriod === 'month') {
     APP.coupleStatePeriod = savedPeriod;
