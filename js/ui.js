@@ -196,6 +196,7 @@ async function onCoupleModalAction(action) {
       return;
     }
 
+    /* Роль 'you' — ДО создания пары, чтобы owner_id и имя писались корректно */
     APP.myRole = 'you';
 
     const code = generateCoupleCode();
@@ -245,6 +246,7 @@ async function onCoupleModalAction(action) {
     APP.coupleId = code;
     storageSet(CONFIG.STORAGE.couple, code);
 
+    /* determineMyRole смотрит owner_id на сервере */
     await determineMyRole(code);
     await loadFromSupabase();
     await pushMyName();
@@ -302,11 +304,9 @@ function openMyNameModal() {
 
 function onGenderBtnClick(gender) {
   if (gender !== 'f' && gender !== 'm') return;
-
   document.querySelectorAll('.gender-btn').forEach(function (b) {
     b.classList.toggle('active', b.dataset.gender === gender);
   });
-
   const btn = $('saveMyNameBtn');
   if (btn) btn.disabled = false;
 }
@@ -361,7 +361,7 @@ function openAboutModal() {
 
   openModal(
     '<h3>Love Meter</h3>' +
-    '<p>Трекер эмоционального состояния пары.<br>Версия 1.3 • Режим: ' + mode + '</p>' +
+    '<p>Трекер эмоционального состояния пары.<br>Версия 1.4 • Режим: ' + mode + '</p>' +
     '<p style="font-size:12px;margin-bottom:20px;">Данные хранятся в браузере.</p>' +
     '<button type="button" class="modal-btn primary" data-action="close">Закрыть</button>'
   );
