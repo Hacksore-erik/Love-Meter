@@ -1,6 +1,6 @@
 /* ============================================================
    COMPONENTS — карточки, сердце, голосование, календарь,
-   график, модалка, toast, PDF
+   график, модалка, toast, PDF, журнал ошибок
    ============================================================ */
 
 /* ============================================================
@@ -121,6 +121,7 @@
   touch-action: manipulation;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
 }
 
 .vote-btn:active {
@@ -365,6 +366,7 @@
               background var(--dur) var(--ease);
   font-weight: 500;
   padding-bottom: 2px;
+  cursor: pointer;
 }
 
 .cal-nav-btn:active {
@@ -406,6 +408,7 @@
   padding: 0;
   border-radius: 50%;
   transition: background var(--dur-fast) var(--ease);
+  cursor: pointer;
 }
 
 .cal-cell:active {
@@ -523,6 +526,7 @@
   transition: background var(--dur) var(--ease),
               box-shadow var(--dur) var(--ease),
               transform var(--dur-fast) var(--ease);
+  cursor: pointer;
 }
 
 .seg-btn.active {
@@ -772,6 +776,7 @@
   width: 100%;
   text-align: left;
   transition: background var(--dur-fast) var(--ease);
+  cursor: pointer;
 }
 
 .settings-item:active {
@@ -853,6 +858,8 @@
   transform: scale(0.95);
   transition: transform var(--dur) var(--ease);
   box-shadow: var(--shadow-xl);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
 }
 
 .modal-backdrop.show .modal {
@@ -903,6 +910,7 @@
   transition: transform var(--dur-fast) var(--ease),
               opacity var(--dur) var(--ease);
   margin-bottom: 8px;
+  cursor: pointer;
 }
 
 .modal-btn:last-child {
@@ -1087,4 +1095,176 @@
   color: #8e8e93;
   text-align: center;
   line-height: 1.6;
+}
+
+/* ============================================================
+   ЖУРНАЛ ОШИБОК
+   ============================================================ */
+
+/* Плавающий баннер ошибки внизу экрана */
+.lm-error-banner {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--safe-bottom) + 84px);
+  background: rgba(255, 59, 48, 0.96);
+  color: #fff;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.35;
+  z-index: 99998;
+  box-shadow: 0 8px 24px rgba(255, 59, 48, 0.35);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transform: translateY(20px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s var(--ease),
+              transform 0.3s var(--ease);
+  cursor: pointer;
+  max-height: 180px;
+  overflow: hidden;
+}
+
+.lm-error-banner.show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.lm-error-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.lm-error-title {
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.9;
+}
+
+.lm-error-close {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.lm-error-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lm-error-code {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  align-self: flex-start;
+  margin-bottom: 4px;
+}
+
+.lm-error-desc {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.lm-error-msg {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 11px;
+  opacity: 0.85;
+  word-break: break-word;
+  max-height: 60px;
+  overflow: hidden;
+}
+
+/* Модалка журнала ошибок */
+.error-log-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  padding: 12px;
+}
+
+.error-log-empty {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+  padding: 20px 0;
+}
+
+.error-log-item {
+  padding: 10px 0;
+  border-bottom: 0.5px solid var(--separator);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.error-log-item:last-child {
+  border-bottom: none;
+}
+
+.error-log-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.error-log-item-code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-weight: 700;
+  color: var(--danger);
+  font-size: 11px;
+  background: var(--danger-bg);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+}
+
+.error-log-item-time {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.error-log-item-desc {
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.error-log-item-msg {
+  color: var(--text-dim);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 11px;
+  word-break: break-word;
+}
+
+.error-log-item-extra {
+  color: var(--text-soft);
+  font-size: 10px;
+  margin-top: 4px;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  word-break: break-word;
 }
