@@ -1,10 +1,5 @@
 /* ============================================================
    SCREENS — логика экранов
-   ============================================================
-   - Главная: сердце партнёра (SVG-волна) + голосование + «Общее состояние»
-   - Награды: достижения
-   - Календарь
-   - Динамика: график + сравнение + рекорды
    ============================================================ */
 
 
@@ -38,7 +33,6 @@ function setStopColors(grad, colors) {
   }
 }
 
-/* Палитры уровней: возвращает { emptyColors, liquidColors, glow, status, pillBg, pillColor, ringColor } */
 function heartPaletteFor(pct) {
   if (pct <= 20) {
     return {
@@ -112,7 +106,6 @@ function setHeartLevel(pct) {
   if (coupleRing) coupleRing.style.borderColor = p.ringColor;
 }
 
-/* Специальный случай: нет данных / скрыто */
 function setHeartEmpty(hidden) {
   const waveFront = $('waveFront');
   const percentEl = $('heartPercent');
@@ -150,12 +143,12 @@ function setPartnerOnline(on) {
   if (heartContainer) heartContainer.classList.toggle('online', isOn);
   if (partnerDot) partnerDot.classList.toggle('online', isOn);
   if (partnerStatus) {
-    partnerStatus.textContent = isOn ? 'партнёр в сети' : 'партнёр не в сети';
+    const name = getPartnerName();
+    const label = (name && name !== CONFIG.DEFAULTS.partnerName) ? name : 'партнёр';
+    partnerStatus.textContent = isOn ? (label + ' в сети') : (label + ' не в сети');
     partnerStatus.classList.toggle('online', isOn);
   }
 }
-
-/* ---------- Meta-row «обновлено X назад» ---------- */
 
 let _updateHintSeconds = 2;
 
@@ -175,8 +168,6 @@ function updateUpdatedHint() {
   _updateHintSeconds += 12;
   if (_updateHintSeconds > 600) _updateHintSeconds = 2;
 }
-
-/* ---------- Главный рендер сердца ---------- */
 
 function updateHeart() {
   try {
@@ -841,6 +832,18 @@ function hideChartTooltip() {
 
 function renderCompare() {
   try {
+    const youLabelEl = $('compareYouLabel');
+    if (youLabelEl) {
+      const me = getMyName();
+      youLabelEl.textContent = (me && me !== CONFIG.DEFAULTS.myName) ? me : 'Ты';
+    }
+
+    const partnerLabelEl = $('comparePartnerLabel');
+    if (partnerLabelEl) {
+      const p = getPartnerName();
+      partnerLabelEl.textContent = (p && p !== CONFIG.DEFAULTS.partnerName) ? p : 'Партнёр';
+    }
+
     const stats = getPeriodStats(APP.currentPeriod);
 
     const youEl = $('compareYouVal');
