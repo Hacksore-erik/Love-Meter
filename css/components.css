@@ -103,7 +103,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-top: 6px;
+  transform: translateY(-6%);
   font-size: clamp(32px, 10vw, 46px);
   font-weight: 800;
   color: #fff;
