@@ -3,27 +3,29 @@
    ============================================================
    Этот файл отвечает только за данные и логику. Он не знает
    ни про DOM, ни про UI, ни про сервер. Все функции чистые
-   или работают с APP.state. Загружается вторым, после config.
+   или работают с APP.state. Загружается третьим, после
+   logger.js и config.js.
+
+   Все ошибки логируются через LM.record() с кодами:
+   LM-001 — ошибка загрузки состояния
+   LM-002 — ошибка сохранения состояния
+   LM-027 — ошибка генерации UUID
    ============================================================ */
 
 /* ============================================================
    ГЛОБАЛЬНОЕ СОСТОЯНИЕ
-   ============================================================
-   Единый объект APP — чтобы не плодить глобальные переменные.
-   Все модули обращаются к данным через APP.state или через
-   функции из этого файла.
    ============================================================ */
 const APP = {
-  state: null,              // { names, startDate, votes, openMode, streak, totalVotes }
-  myId: null,               // UUID этого устройства
-  coupleId: null,           // код пары (6 символов) или null
-  myRole: 'you',            // 'you' или 'partner'
-  currentPeriod: 'month',   // текущий период графика
-  calYear: null,            // год в календаре
-  calMonth: null,           // месяц в календаре (0-11)
-  realtimeChannel: null,    // канал Supabase Realtime
-  supabaseClient: null,     // клиент Supabase или null
-  supabaseLoading: null     // Promise загрузки клиента
+  state: null,
+  myId: null,
+  coupleId: null,
+  myRole: 'you',
+  currentPeriod: 'month',
+  calYear: null,
+  calMonth: null,
+  realtimeChannel: null,
+  supabaseClient: null,
+  supabaseLoading: null
 };
 
 /* ============================================================
@@ -40,28 +42,23 @@ function pad(n) {
   return n < 10 ? '0' + n : '' + n;
 }
 
-/* Date → 'YYYY-MM-DD' в локальном времени */
 function fmtDate(d) {
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 }
 
-/* 'YYYY-MM-DD' → Date в локальном времени */
 function parseDate(s) {
   const parts = s.split('-').map(Number);
   return new Date(parts[0], parts[1] - 1, parts[2]);
 }
 
-/* Сегодняшняя дата в формате 'YYYY-MM-DD' */
 function todayStr() {
   return fmtDate(new Date());
 }
 
-/* Разница в днях между двумя Date */
 function daysBetween(a, b) {
   return Math.round((b - a) / 86400000);
 }
 
-/* Названия месяцев на русском */
 const MONTHS_FULL = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
@@ -94,21 +91,28 @@ function uuid() {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       return crypto.randomUUID();
     }
-  } catch (e) { /* fallback ниже */ }
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-027', 'crypto.randomUUID недоступен, используется fallback', e.message || '');
+    }
+  }
 
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+  try {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-027', 'Не удалось сгенерировать UUID', e.message || '');
+    }
+    return 'fallback-' + Date.now() + '-' + Math.random().toString(36).substring(2, 10);
+  }
 }
 
 /* ============================================================
    УТИЛИТЫ — БЕЗОПАСНЫЙ LOCALSTORAGE
-   ============================================================
-   В приватном режиме Safari localStorage может кидать
-   исключение. Оборачиваем все операции, чтобы приложение
-   не падало.
    ============================================================ */
 function storageGet(key) {
   try {
@@ -123,6 +127,9 @@ function storageSet(key, value) {
     localStorage.setItem(key, value);
     return true;
   } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-002', e.message || 'Не удалось сохранить в localStorage', key);
+    }
     return false;
   }
 }
@@ -143,7 +150,7 @@ function defaultState() {
   return {
     names: CONFIG.DEFAULTS.names,
     startDate: todayStr(),
-    votes: {},                                    // { 'YYYY-MM-DD': { you: 1..5, partner: 1..5 } }
+    votes: {},
     openMode: CONFIG.DEFAULTS.openMode,
     streak: 0,
     totalVotes: 0
@@ -157,7 +164,6 @@ function loadState() {
     try {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
-        /* Валидация полей — на случай повреждённого JSON */
         if (!parsed.votes || typeof parsed.votes !== 'object') {
           parsed.votes = {};
         }
@@ -173,7 +179,9 @@ function loadState() {
         return parsed;
       }
     } catch (e) {
-      /* Повреждённый JSON — начинаем заново */
+      if (typeof LM !== 'undefined') {
+        LM.record('LM-001', e.message || 'Ошибка парсинга localStorage', CONFIG.STORAGE.state);
+      }
     }
   }
 
@@ -202,7 +210,6 @@ function computeStreak(votes) {
     } else if (i > 0) {
       break;
     }
-    /* i === 0 (сегодня) может быть пустым — не считаем это за разрыв */
   }
 
   return streak;
@@ -234,11 +241,6 @@ function getTodayVote() {
 
 /* ============================================================
    ПРОЦЕНТ ДЛЯ СЕРДЦА
-   ============================================================
-   Формула:
-     avg_7_days * 0.6 + myVote * 0.3 + min(streak, 30) / 30 * 10
-   Ограничение: 0-100.
-   Если вообще нет данных — базовые 0%.
    ============================================================ */
 function computePercent() {
   const today = new Date();
@@ -262,7 +264,6 @@ function computePercent() {
   const myVote = getTodayVote() || 0;
   const streakPart = clamp(APP.state.streak, 0, 30) / 30 * 10;
 
-  /* Если вообще нет данных — 0% */
   if (!last7.length && !myVote) {
     return 0;
   }
@@ -273,13 +274,6 @@ function computePercent() {
 
 /* ============================================================
    ДАННЫЕ ДЛЯ ГРАФИКА
-   ============================================================
-   Возвращает массив точек:
-     { date, key, value (1..5 или null), label }
-
-   week  — последние 7 дней
-   month — последние 30 дней
-   year  — 12 недель, средняя оценка за неделю
    ============================================================ */
 function getChartData(period) {
   const today = new Date();
@@ -330,7 +324,6 @@ function getChartData(period) {
       });
     }
   } else {
-    /* Год — 12 недель по 7 дней */
     for (let w = 11; w >= 0; w--) {
       const weekEnd = new Date(today);
       weekEnd.setDate(weekEnd.getDate() - w * 7);
@@ -361,9 +354,6 @@ function getChartData(period) {
 
 /* ============================================================
    АГРЕГИРОВАННАЯ СТАТИСТИКА ЗА ПЕРИОД
-   ============================================================
-   Возвращает { youAvg, partnerAvg, bothCount, validCount, youValues, partnerValues }
-   Используется в графике и сравнении.
    ============================================================ */
 function getPeriodStats(period) {
   const points = getChartData(period);
@@ -397,7 +387,7 @@ function getPeriodStats(period) {
 }
 
 /* ============================================================
-   РЕКОРДЫ — лучший/худший день, самая длинная серия 5
+   РЕКОРДЫ
    ============================================================ */
 function computeRecords() {
   let best = null, bestVal = 0;
@@ -419,7 +409,6 @@ function computeRecords() {
     }
   }
 
-  /* Самая длинная серия подряд идущих дней, где у кого-то оценка 5 */
   let longest = 0;
   let current = 0;
   for (let i = 0; i < sorted.length; i++) {
@@ -443,9 +432,6 @@ function computeRecords() {
 
 /* ============================================================
    ИНСАЙТ ДЛЯ МЕСЯЦА
-   ============================================================
-   Используется в календаре. Возвращает объект:
-     { avgMonth, bestDay, bothDays, daysInMonth }
    ============================================================ */
 function computeMonthlyInsight(year, month) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -485,9 +471,6 @@ function computeMonthlyInsight(year, month) {
 
 /* ============================================================
    ПРОГРЕСС ДОСТИЖЕНИЙ
-   ============================================================
-   Возвращает число от 0 до a.max. Используется в screens.js
-   для отрисовки карточек достижений.
    ============================================================ */
 function getAchievementProgress(a) {
   const votes = APP.state.votes;
@@ -574,8 +557,6 @@ function getAchievementProgress(a) {
 
 /* ============================================================
    ИНИЦИАЛИЗАЦИЯ STATE И myId
-   ============================================================
-   Вызывается один раз из app.js при старте.
    ============================================================ */
 function initCore() {
   /* Мой ID */
