@@ -211,7 +211,6 @@ async function onCoupleModalAction(action) {
 
     APP.coupleId = code;
     storageSet(CONFIG.STORAGE.couple, code);
-    storageSet(CONFIG.STORAGE.creator + code, APP.myId);
 
     await syncAllLocalVotesToSupabase();
     subscribeRealtime();
