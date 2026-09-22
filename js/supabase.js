@@ -1,5 +1,5 @@
 /* ============================================================
-   SUPABASE — синхронизация пары, realtime, роли
+   SUPABASE — синхронизация пары, realtime, presence, роли
    ============================================================ */
 
 /* ---------- КОЛОНКИ (зависят от роли) ---------- */
@@ -360,7 +360,7 @@ async function syncAllLocalVotesToSupabase() {
   await pushCoupleMeta();
 }
 
-/* ---------- REALTIME ---------- */
+/* ---------- REALTIME + PRESENCE ---------- */
 
 function subscribeRealtime() {
   if (!APP.supabaseClient || !APP.coupleId) return;
@@ -372,7 +372,9 @@ function subscribeRealtime() {
 
   try {
     APP.realtimeChannel = APP.supabaseClient
-      .channel('couple:' + APP.coupleId)
+      .channel('couple:' + APP.coupleId, {
+        config: { presence: { key: APP.myId || 'me' } }
+      })
       .on(
         'postgres_changes',
         {
@@ -393,15 +395,64 @@ function subscribeRealtime() {
         },
         handleRealtimeCouple
       )
+      .on('presence', { event: 'sync' }, function () {
+        handlePresenceSync();
+      })
+      .on('presence', { event: 'join' }, function () {
+        handlePresenceSync();
+      })
+      .on('presence', { event: 'leave' }, function () {
+        handlePresenceSync();
+      })
       .subscribe(function (status) {
-        if (typeof updateSyncDot === 'function') {
-          updateSyncDot(status === 'SUBSCRIBED' ? 'on' : 'off');
+        if (status === 'SUBSCRIBED') {
+          if (typeof updateSyncDot === 'function') updateSyncDot('on');
+          // Регистрируем себя в presence — чтобы партнёр видел нас онлайн
+          try {
+            APP.realtimeChannel.track({
+              online_at: new Date().toISOString(),
+              my_id: APP.myId
+            });
+          } catch (e) {}
+        } else {
+          if (typeof updateSyncDot === 'function') updateSyncDot('off');
         }
       });
   } catch (e) {
     if (typeof LM !== 'undefined') {
       LM.record('LM-019', e.message || 'subscribeRealtime failed',
         'code=' + APP.coupleId);
+    }
+  }
+}
+
+/* Проверяет presence-состояние канала: есть ли кто-то кроме нас */
+function handlePresenceSync() {
+  try {
+    if (!APP.realtimeChannel) return;
+
+    const state = APP.realtimeChannel.presenceState() || {};
+    let partnerOnline = false;
+
+    for (const key in state) {
+      const metas = state[key];
+      if (!Array.isArray(metas)) continue;
+      for (let i = 0; i < metas.length; i++) {
+        const m = metas[i];
+        if (m && m.my_id && m.my_id !== APP.myId) {
+          partnerOnline = true;
+          break;
+        }
+      }
+      if (partnerOnline) break;
+    }
+
+    if (typeof setPartnerOnline === 'function') {
+      setPartnerOnline(partnerOnline);
+    }
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-019', e.message || 'handlePresenceSync failed', '');
     }
   }
 }
@@ -513,6 +564,10 @@ function handleRealtimeCouple(payload) {
 
 function unsubscribeRealtime() {
   if (!APP.supabaseClient || !APP.realtimeChannel) return;
+  try { APP.realtimeChannel.untrack(); } catch (e) {}
   try { APP.supabaseClient.removeChannel(APP.realtimeChannel); } catch (e) {}
   APP.realtimeChannel = null;
+  if (typeof setPartnerOnline === 'function') {
+    setPartnerOnline(false);
+  }
 }
