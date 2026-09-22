@@ -6,26 +6,23 @@
 
    Что синхронизируется:
    - голоса (таблица votes)
-   - имена пары (couples.names)
+   - имена партнёров (couples.name_you, couples.name_partner)
    - дата старта (couples.start_date)
    - флаги скрытия оценок (couples.hide_you, couples.hide_partner)
 
-   Как устроены флаги скрытия:
-   - hide_you     = true, если партнёр 'you' скрыл СВОИ оценки
-   - hide_partner = true, если партнёр 'partner' скрыл СВОИ оценки
+   Про имена:
+   - name_you     — имя того, кто создал пару (роль 'you')
+   - name_partner — имя того, кто подключился (роль 'partner')
 
-   Каждое устройство знает только свой флаг (hideMyVotes) и
-   определяет свой столбец через APP.myRole:
-   - если myRole='you'   → пишу в hide_you
-   - если myRole='partner' → пишу в hide_partner
+   Каждое устройство пишет в СВОЙ столбец:
+   - если myRole='you'     → пишу в name_you
+   - если myRole='partner' → пишу в name_partner
 
-   При чтении:
-   - если myRole='you'     → чужой флаг это hide_partner
-   - если myRole='partner' → чужой флаг это hide_you
+   При чтении берётся ЧУЖОЙ столбец и кладётся в state.partnerName.
    ============================================================ */
 
 /* ============================================================
-   КЛЮЧИ СТОЛБЦОВ ДЛЯ МОЕГО/ЧУЖОГО ФЛАГА
+   КЛЮЧИ СТОЛБЦОВ ДЛЯ МОЕГО/ЧУЖОГО
    ============================================================ */
 function myHideColumn() {
   return APP.myRole === 'you' ? 'hide_you' : 'hide_partner';
@@ -33,6 +30,14 @@ function myHideColumn() {
 
 function partnerHideColumn() {
   return APP.myRole === 'you' ? 'hide_partner' : 'hide_you';
+}
+
+function myNameColumn() {
+  return APP.myRole === 'you' ? 'name_you' : 'name_partner';
+}
+
+function partnerNameColumn() {
+  return APP.myRole === 'you' ? 'name_partner' : 'name_you';
 }
 
 /* ============================================================
@@ -76,22 +81,36 @@ async function loadFromSupabase() {
 
     const couple = coupleRes.data;
 
-    APP.state.names = couple.names || APP.state.names;
+    /* --- Имена ---
+       Читаем СВОЙ столбец в myName (на случай переустановки),
+       ЧУЖОЙ столбец в partnerName. */
+    const myNameCol = myNameColumn();
+    const partnerNameCol = partnerNameColumn();
+
+    const serverMyName = couple[myNameCol];
+    const serverPartnerName = couple[partnerNameCol];
+
+    if (serverMyName) {
+      APP.state.myName = serverMyName;
+    }
+    if (serverPartnerName) {
+      APP.state.partnerName = serverPartnerName;
+    }
+
+    /* --- Метаданные --- */
     APP.state.startDate = couple.start_date || APP.state.startDate;
 
-    /* Читаем флаг партнёра — тот столбец, который НЕ мой */
+    /* --- Флаги скрытия --- */
     const partnerCol = partnerHideColumn();
     APP.state.partnerHideFlag = !!couple[partnerCol];
 
-    /* Мой флаг тоже восстанавливаем с сервера — на случай,
-       если я переустановил приложение, а флаг уже был включён */
     const myCol = myHideColumn();
     const serverMyFlag = !!couple[myCol];
     if (serverMyFlag !== APP.state.hideMyVotes) {
       APP.state.hideMyVotes = serverMyFlag;
     }
 
-    /* Голоса */
+    /* --- Голоса --- */
     const votesRes = await APP.supabaseClient
       .from('votes')
       .select('*')
@@ -145,27 +164,23 @@ async function pushVoteToSupabase(date, role, value) {
 /* ============================================================
    ОБНОВЛЕНИЕ МЕТАДАННЫХ ПАРЫ
    ============================================================
-   Отправляем на сервер:
-   - names
-   - start_date
-   - СВОЙ столбец флага скрытия (только свой, не чужой!)
-
-   Другой столбец не трогаем — за него отвечает партнёр.
+   Отправляем: своё имя, дату старта, свой флаг скрытия.
+   Чужие столбцы не трогаем.
    ============================================================ */
 async function pushCoupleMeta() {
   if (!APP.supabaseClient || !APP.coupleId) return false;
 
   try {
+    const myNameCol = myNameColumn();
     const myCol = myHideColumn();
 
     const payload = {
       id: APP.coupleId,
-      names: APP.state.names,
       start_date: APP.state.startDate,
       updated_at: new Date().toISOString()
     };
 
-    /* Устанавливаем только свой столбец */
+    payload[myNameCol] = getMyName();
     payload[myCol] = !!APP.state.hideMyVotes;
 
     const res = await APP.supabaseClient
@@ -179,11 +194,33 @@ async function pushCoupleMeta() {
 }
 
 /* ============================================================
-   ОБНОВЛЕНИЕ ТОЛЬКО ФЛАГА СКРЫТИЯ
+   ОБНОВЛЕНИЕ ТОЛЬКО МОЕГО ИМЕНИ
    ============================================================
-   Отдельная функция для togglePrivacy, чтобы не перезаписывать
-   лишние поля (например, names — если партнёр изменил имена,
-   а я одновременно меняю флаг, я их не затрону).
+   Отдельная функция для редактора имён, чтобы не перезаписать
+   чужие поля (например, партнёр параллельно меняет свой флаг).
+   ============================================================ */
+async function pushMyName() {
+  if (!APP.supabaseClient || !APP.coupleId) return false;
+
+  try {
+    const myNameCol = myNameColumn();
+    const update = {};
+    update[myNameCol] = getMyName();
+    update.updated_at = new Date().toISOString();
+
+    const res = await APP.supabaseClient
+      .from('couples')
+      .update(update)
+      .eq('id', APP.coupleId);
+
+    return !res.error;
+  } catch (e) {
+    return false;
+  }
+}
+
+/* ============================================================
+   ОБНОВЛЕНИЕ ТОЛЬКО ФЛАГА СКРЫТИЯ
    ============================================================ */
 async function pushMyHideFlag() {
   if (!APP.supabaseClient || !APP.coupleId) return false;
@@ -208,22 +245,26 @@ async function pushMyHideFlag() {
 /* ============================================================
    СОЗДАНИЕ ПАРЫ
    ============================================================
-   Оба столбца флагов создаются со значением false.
+   Оба столбца имён и флагов создаются пустыми.
+   Партнёр 'you' сразу записывает своё имя.
    ============================================================ */
 async function createCoupleInSupabase(code) {
   if (!APP.supabaseClient) return false;
 
   try {
+    const myNameCol = myNameColumn();
     const myCol = myHideColumn();
 
     const payload = {
       id: code,
-      names: APP.state.names,
       start_date: APP.state.startDate,
       hide_you: false,
-      hide_partner: false
+      hide_partner: false,
+      name_you: '',
+      name_partner: ''
     };
 
+    payload[myNameCol] = getMyName();
     payload[myCol] = !!APP.state.hideMyVotes;
 
     const res = await APP.supabaseClient
@@ -357,14 +398,12 @@ function handleRealtimeVote(payload) {
       renderChart();
     }
 
-    if (role === 'partner' && APP.myRole === 'you' && !getPartnerHideFlag()) {
+    /* Toast — только если партнёр не скрыл оценки */
+    const partnerRole = APP.myRole === 'you' ? 'partner' : 'you';
+    if (role === partnerRole && !getPartnerHideFlag()) {
       if (typeof showToast === 'function') {
-        showToast('Партнёр поставил оценку ' + value + ' 💕');
-      }
-    }
-    if (role === 'you' && APP.myRole === 'partner' && !getPartnerHideFlag()) {
-      if (typeof showToast === 'function') {
-        showToast('Партнёр поставил оценку ' + value + ' 💕');
+        const name = getPartnerName();
+        showToast(name + ' поставил(а) оценку ' + value + ' 💕');
       }
     }
   } catch (e) { /* игнорируем */ }
@@ -375,24 +414,42 @@ function handleRealtimeCouple(payload) {
     const row = payload.new;
     if (!row) return;
 
-    APP.state.names = row.names || APP.state.names;
-    APP.state.startDate = row.start_date || APP.state.startDate;
-
-    /* Флаг партнёра — из чужого столбца */
-    const partnerCol = partnerHideColumn();
-    const newPartnerHide = !!row[partnerCol];
-
-    /* Флаг мой — из своего столбца. Если он пришёл другим
-       (например, я включил на другом устройстве) — применяем. */
-    const myCol = myHideColumn();
-    const newMyHide = !!row[myCol];
-
     let changed = false;
 
+    /* Имя партнёра — из чужого столбца */
+    const partnerNameCol = partnerNameColumn();
+    const newPartnerName = row[partnerNameCol];
+    if (newPartnerName && newPartnerName !== APP.state.partnerName) {
+      APP.state.partnerName = newPartnerName;
+      changed = true;
+      if (typeof showToast === 'function') {
+        showToast('Партнёр: ' + newPartnerName + ' 💕');
+      }
+    }
+
+    /* Моё имя — из своего столбца (на случай смены на другом устройстве) */
+    const myNameCol = myNameColumn();
+    const newMyName = row[myNameCol];
+    if (newMyName && newMyName !== APP.state.myName) {
+      APP.state.myName = newMyName;
+      changed = true;
+    }
+
+    /* Дата старта */
+    if (row.start_date) {
+      APP.state.startDate = row.start_date;
+    }
+
+    /* Флаги скрытия */
+    const partnerCol = partnerHideColumn();
+    const newPartnerHide = !!row[partnerCol];
     if (newPartnerHide !== APP.state.partnerHideFlag) {
       APP.state.partnerHideFlag = newPartnerHide;
       changed = true;
     }
+
+    const myCol = myHideColumn();
+    const newMyHide = !!row[myCol];
     if (newMyHide !== APP.state.hideMyVotes) {
       APP.state.hideMyVotes = newMyHide;
       changed = true;
@@ -424,38 +481,47 @@ function unsubscribeRealtime() {
 /* ============================================================
    ОПРЕДЕЛЕНИЕ МОЕЙ РОЛИ В ПАРЕ
    ============================================================
-   ВАЖНО: роль должна быть определена ДО первого вызова
-   myHideColumn() / partnerHideColumn() / loadFromSupabase(),
-   иначе мы будем читать/писать не тот столбец.
+   ВАЖНО: должна быть определена ДО первого вызова
+   myNameColumn() / partnerNameColumn() / loadFromSupabase().
    ============================================================ */
 function determineMyRole(code) {
   const creator = storageGet(CONFIG.STORAGE.creator + code);
 
+  /* Случай 1: это устройство создавало пару — роль 'you' */
   if (creator && creator === APP.myId) {
     APP.myRole = 'you';
     return;
   }
 
-  if (creator && creator !== 'other-device') {
+  /* Случай 2: сохранённый creator — чужой ID */
+  if (creator && creator !== APP.myId && creator !== 'other-device') {
     APP.myRole = 'partner';
     return;
   }
 
-  /* Информации о создателе нет — определяем по первому
-     свободному слоту в сегодняшнем дне */
-  const today = APP.state.votes[todayStr()];
-  if (today) {
-    if (today.you && !today.partner) {
+  /* Случай 3: информации о создателе нет — ищем
+     свободный слот в свежих днях */
+  const allDates = Object.keys(APP.state.votes).sort().reverse();
+
+  for (let i = 0; i < allDates.length; i++) {
+    const v = APP.state.votes[allDates[i]];
+    if (!v) continue;
+
+    if (v.you && !v.partner) {
       APP.myRole = 'partner';
       storageSet(CONFIG.STORAGE.creator + code, 'other-device');
       return;
     }
-    if (today.partner && !today.you) {
+    if (v.partner && !v.you) {
       APP.myRole = 'you';
       storageSet(CONFIG.STORAGE.creator + code, APP.myId);
       return;
     }
+    if (v.you && v.partner) {
+      continue;
+    }
   }
 
-  APP.myRole = 'partner';
+  /* Ничего не нашли — по умолчанию 'you' */
+  APP.myRole = 'you';
 }
