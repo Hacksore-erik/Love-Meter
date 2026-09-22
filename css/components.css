@@ -1,6 +1,6 @@
 /* ============================================================
    COMPONENTS — карточки, сердце, голосование, календарь,
-   график, модалка, toast, PDF, журнал ошибок
+   график, модалка, toast, PDF, журнал ошибок, блок состояния пары
    ============================================================ */
 
 /* ============================================================
@@ -80,6 +80,84 @@
   padding: 0 20px;
   transition: color var(--dur) var(--ease);
   line-height: 1.3;
+}
+
+/* ============================================================
+   БЛОК «ОБЩЕЕ СОСТОЯНИЕ ПАРЫ»
+   ============================================================ */
+.couple-state-card {
+  padding: 18px 20px;
+}
+
+.couple-state-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.couple-state-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+
+/* Segmented поменьше — для встраивания в карточку */
+.segmented-small {
+  display: flex;
+  background: rgba(118, 118, 128, 0.12);
+  border-radius: 8px;
+  padding: 2px;
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.segmented-small .seg-btn {
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  min-width: 52px;
+  text-align: center;
+}
+
+.couple-state-body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.couple-state-ring {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 4px solid var(--text-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color var(--dur) var(--ease);
+  background: #fff;
+}
+
+.couple-state-percent {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.couple-state-status {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.4;
+  font-weight: 500;
 }
 
 /* ============================================================
@@ -449,6 +527,12 @@
               0 0 0 3.5px var(--accent-soft);
 }
 
+/* Когда оба голосовали, но часть оценок скрыта — пунктирное кольцо */
+.cal-day.both.hidden-some {
+  box-shadow: 0 0 0 2px var(--card),
+              0 0 0 3.5px var(--text-soft);
+}
+
 .cal-legend {
   display: flex;
   flex-wrap: wrap;
@@ -527,6 +611,9 @@
               box-shadow var(--dur) var(--ease),
               transform var(--dur-fast) var(--ease);
   cursor: pointer;
+  font-family: var(--font);
+  border: none;
+  background: none;
 }
 
 .seg-btn.active {
@@ -758,7 +845,7 @@
 }
 
 /* ============================================================
-   НАСТРОЙКИ (iOS Settings-style)
+   НАСТРОЙКИ
    ============================================================ */
 .settings-group {
   background: var(--card);
@@ -777,6 +864,9 @@
   text-align: left;
   transition: background var(--dur-fast) var(--ease);
   cursor: pointer;
+  border: none;
+  background: none;
+  font-family: var(--font);
 }
 
 .settings-item:active {
@@ -860,6 +950,7 @@
   box-shadow: var(--shadow-xl);
   max-height: calc(100vh - 40px);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-backdrop.show .modal {
@@ -895,6 +986,7 @@
   color: var(--text);
   margin-bottom: 12px;
   transition: border-color var(--dur) var(--ease);
+  font-family: var(--font);
 }
 
 .modal input:focus {
@@ -911,6 +1003,8 @@
               opacity var(--dur) var(--ease);
   margin-bottom: 8px;
   cursor: pointer;
+  border: none;
+  font-family: var(--font);
 }
 
 .modal-btn:last-child {
@@ -966,7 +1060,7 @@
 }
 
 /* ============================================================
-   PDF TEMPLATE (скрыт за экраном)
+   PDF TEMPLATE
    ============================================================ */
 #pdfTemplate {
   position: fixed;
@@ -1100,8 +1194,6 @@
 /* ============================================================
    ЖУРНАЛ ОШИБОК
    ============================================================ */
-
-/* Плавающий баннер ошибки внизу экрана */
 .lm-error-banner {
   position: fixed;
   left: 12px;
@@ -1161,6 +1253,8 @@
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
+  border: none;
+  font-family: var(--font);
 }
 
 .lm-error-body {
