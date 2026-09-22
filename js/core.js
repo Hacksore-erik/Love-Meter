@@ -2,15 +2,13 @@
    CORE — состояние, localStorage, утилиты, математика
    ============================================================
    Файл отвечает только за данные и логику. Не знает про DOM,
-   UI и сервер. Все функции чистые или работают с APP.state.
+   UI и сервер.
 
-   Новые функции в этой версии:
-   - computePartnerPercent()  — состояние партнёра за 7 дней
-   - computeCouplePercent(p)  — состояние пары за 7 или 30 дней
-   - getPartnerHideFlag()     — скрыл ли партнёр свои оценки
-   - getMyHideFlag()          — скрыл ли я свои оценки
-
-   Убрано: computePercent() (старая формула с myVote).
+   Изменения в этой версии:
+   - name_you / name_partner вместо общего names
+   - функции getMyName(), getPartnerName(), setMyName(),
+     setPartnerName(), parseNames() для обратной совместимости
+   - ключ для периода блока пары берётся из CONFIG.STORAGE
    ============================================================ */
 
 /* ============================================================
@@ -22,7 +20,7 @@ const APP = {
   coupleId: null,
   myRole: 'you',
   currentPeriod: 'month',
-  coupleStatePeriod: 'week',   // период для блока «Общее состояние пары»
+  coupleStatePeriod: 'week',
   calYear: null,
   calMonth: null,
   realtimeChannel: null,
@@ -151,6 +149,8 @@ function storageRemove(key) {
 function defaultState() {
   return {
     names: CONFIG.DEFAULTS.names,
+    myName: CONFIG.DEFAULTS.myName,
+    partnerName: CONFIG.DEFAULTS.partnerName,
     startDate: todayStr(),
     votes: {},
     hideMyVotes: CONFIG.DEFAULTS.hideMyVotes,
@@ -171,6 +171,12 @@ function loadState() {
         }
         if (typeof parsed.names !== 'string' || !parsed.names) {
           parsed.names = CONFIG.DEFAULTS.names;
+        }
+        if (typeof parsed.myName !== 'string' || !parsed.myName) {
+          parsed.myName = CONFIG.DEFAULTS.myName;
+        }
+        if (typeof parsed.partnerName !== 'string' || !parsed.partnerName) {
+          parsed.partnerName = CONFIG.DEFAULTS.partnerName;
         }
         if (typeof parsed.startDate !== 'string') {
           parsed.startDate = todayStr();
@@ -197,6 +203,60 @@ function loadState() {
 function saveState() {
   if (!APP.state) return;
   storageSet(CONFIG.STORAGE.state, JSON.stringify(APP.state));
+}
+
+/* ============================================================
+   ИМЕНА ПАРТНЁРОВ
+   ============================================================
+   Каждый партнёр видит:
+   - Своё имя в «Ты» (это state.myName)
+   - Имя партнёра в «Партнёр» (это state.partnerName)
+
+   На сервере хранятся два отдельных столбца:
+   - name_you     — имя того, кто создал пару (роль 'you')
+   - name_partner — имя того, кто подключился (роль 'partner')
+
+   Каждый партнёр пишет своё имя в свой столбец.
+   При чтении берётся чужой столбец.
+   ============================================================ */
+function getMyName() {
+  return APP.state.myName || CONFIG.DEFAULTS.myName;
+}
+
+function getPartnerName() {
+  return APP.state.partnerName || CONFIG.DEFAULTS.partnerName;
+}
+
+function setMyName(name) {
+  const trimmed = String(name || '').trim().substring(0, 30);
+  if (!trimmed) return false;
+  APP.state.myName = trimmed;
+  saveState();
+  return true;
+}
+
+function setPartnerName(name) {
+  const trimmed = String(name || '').trim().substring(0, 30);
+  if (!trimmed) return false;
+  APP.state.partnerName = trimmed;
+  saveState();
+  return true;
+}
+
+/* Разбор старого формата «Аня & Максим» на два имени.
+   Используется при миграции с версии v1.0.
+   Если строка не содержит '&' — первое имя = вся строка,
+   второе = дефолт. */
+function parseNames(namesString) {
+  const s = String(namesString || '').trim();
+  if (!s) return { you: '', partner: '' };
+
+  const parts = s.split('&').map(function (p) { return p.trim(); });
+  if (parts.length >= 2) {
+    return { you: parts[0], partner: parts.slice(1).join(' & ') };
+  }
+
+  return { you: s, partner: '' };
 }
 
 /* ============================================================
@@ -247,14 +307,6 @@ function getTodayVote() {
 
 /* ============================================================
    СКРЫТИЕ ОЦЕНОК — флаги
-   ============================================================
-   hideMyVotes — моё желание скрыть свои оценки от партнёра.
-   Партнёр видит мои оценки, только если я не включил этот флаг.
-
-   getMyHideFlag()      — мой флаг (из APP.state)
-   getPartnerHideFlag() — флаг партнёра (из state.partnerHideFlag)
-                          заполняется при загрузке с сервера и
-                          обновляется через realtime
    ============================================================ */
 function getMyHideFlag() {
   return !!APP.state.hideMyVotes;
@@ -266,24 +318,6 @@ function getPartnerHideFlag() {
 
 /* ============================================================
    СОСТОЯНИЕ ПАРТНЁРА ЗА 7 ДНЕЙ
-   ============================================================
-   Возвращает объект:
-     {
-       percent: 0..100,
-       hasData: bool,             — были ли хоть какие-то оценки
-       votedToday: bool,          — голосовал ли партнёр сегодня
-       lastVoteValue: 1..5|null,  — последняя оценка партнёра
-       lastVoteDaysAgo: number|null,
-       hidden: bool               — партнёр скрыл свои оценки
-     }
-
-   Процент считаем по среднему оценок партнёра за 7 дней:
-     percent = avg_partner_7 * 20
-   (avg 1..5 → 20..100)
-   Стрик в сердце не учитываем — это отдельная метрика.
-
-   Если партнёр скрыл свои оценки (hidden) — возвращаем
-   percent: 0, hasData: false, но hidden: true.
    ============================================================ */
 function computePartnerPercent() {
   const result = {
@@ -302,7 +336,6 @@ function computePartnerPercent() {
   let lastValue = null;
   let lastDate = null;
 
-  /* Ищем оценки партнёра за последние 7 дней */
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
@@ -335,19 +368,6 @@ function computePartnerPercent() {
 
 /* ============================================================
    СОСТОЯНИЕ ПАРЫ ЗА ПЕРИОД
-   ============================================================
-   period: 'week' (7 дней) или 'month' (30 дней)
-
-   Считаем среднее по ВСЕМ оценкам обоих партнёров за период.
-     percent = avg_all * 20
-
-   Учитываем скрытие:
-   - Если я скрыл свои оценки → они не считаются в общий процент
-     (для партнёра и для меня — потому что скрываю от него).
-   - Если партнёр скрыл свои → его оценки не считаются.
-
-   Возвращает:
-     { percent, count, hasData, daysBack }
    ============================================================ */
 function computeCouplePercent(period) {
   period = period || APP.coupleStatePeriod;
@@ -390,12 +410,6 @@ function computeCouplePercent(period) {
 
 /* ============================================================
    ДАННЫЕ ДЛЯ ГРАФИКА
-   ============================================================
-   Возвращает массив точек: { date, key, value, label }
-
-   week  — последние 7 дней
-   month — последние 30 дней
-   year  — 12 недель, средняя оценка за неделю
    ============================================================ */
 function getChartData(period) {
   const today = new Date();
@@ -700,6 +714,12 @@ function initCore() {
 
   if (typeof APP.state.partnerHideFlag === 'undefined') {
     APP.state.partnerHideFlag = false;
+  }
+
+  /* Период блока пары — из localStorage */
+  const savedPeriod = storageGet(CONFIG.STORAGE.coupleStatePeriod);
+  if (savedPeriod === 'week' || savedPeriod === 'month') {
+    APP.coupleStatePeriod = savedPeriod;
   }
 
   recalcStats();
