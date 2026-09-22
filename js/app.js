@@ -1,31 +1,16 @@
 /* ============================================================
    APP — точка входа
    ============================================================
-   Этот файл загружается последним и связывает всё вместе.
+   Загружается последним, связывает всё вместе.
 
-   Порядок работы:
-   1. initCore()      — синхронно: state, myId, coupleId
-   2. bindEvents()    — синхронно: обработчики кнопок
-   3. Первый рендер   — синхронно: сердце, кнопки, календарь, график
+   Порядок:
+   1. initCore()      — синхронно
+   2. bindEvents()    — синхронно
+   3. Первый рендер   — синхронно
    4. setupPWA()      — отложенно на 100 мс
-   5. Supabase        — асинхронно, в фоне
-
-   ВАЖНО: пункты 1–3 выполняются сразу при DOMContentLoaded,
-   чтобы кнопки работали, даже если Supabase не загрузился
-   или интернета нет.
-
-   Все ошибки логируются через LM.record() с кодами:
-   LM-003, LM-004, LM-005, LM-009, LM-010, LM-011,
-   LM-012, LM-016, LM-017, LM-024, LM-027, LM-028
+   5. Supabase        — асинхронно в фоне
    ============================================================ */
 
-
-/* ============================================================
-   ПОСЛЕДНИЙ РУБЕЖ
-   ============================================================
-   Если что-то падает на этапе init() — покажем баннер через
-   logger и не дадим странице показать «белый экран».
-   ============================================================ */
 function safeCall(code, label, fn) {
   try {
     return fn();
@@ -37,26 +22,21 @@ function safeCall(code, label, fn) {
   }
 }
 
-
-/* ============================================================
-   INIT
-   ============================================================ */
 function init() {
 
-  /* ==========================================================
-     ШАГ 1. СИНХРОННАЯ ИНИЦИАЛИЗАЦИЯ
-     ========================================================== */
+  /* ШАГ 1. СИНХРОННАЯ ИНИЦИАЛИЗАЦИЯ */
   safeCall('LM-028', 'initCore failed', function () {
     initCore();
   });
 
-  /* Fallback — если initCore упал и APP.state не создан */
   if (!APP.state) {
     APP.state = {
       names: CONFIG.DEFAULTS.names,
+      myName: CONFIG.DEFAULTS.myName,
+      partnerName: CONFIG.DEFAULTS.partnerName,
       startDate: todayStr(),
       votes: {},
-      openMode: false,
+      hideMyVotes: false,
       streak: 0,
       totalVotes: 0
     };
@@ -67,16 +47,12 @@ function init() {
     }) || ('fallback-' + Date.now());
   }
 
-  /* ==========================================================
-     ШАГ 2. НАВЕШИВАЕМ ОБРАБОТЧИКИ
-     ========================================================== */
+  /* ШАГ 2. ОБРАБОТЧИКИ */
   safeCall('LM-005', 'bindEvents failed', function () {
     bindEvents();
   });
 
-  /* ==========================================================
-     ШАГ 3. ПЕРВЫЙ РЕНДЕР
-     ========================================================== */
+  /* ШАГ 3. ПЕРВЫЙ РЕНДЕР */
   safeCall('LM-003', 'initCalendar failed', function () {
     initCalendar();
   });
@@ -105,9 +81,7 @@ function init() {
     updateSyncDot(HAS_SUPABASE ? 'local' : 'local');
   });
 
-  /* ==========================================================
-     ШАГ 4. PWA — ОТЛОЖЕННО
-     ========================================================== */
+  /* ШАГ 4. PWA */
   setTimeout(function () {
     safeCall('LM-024', 'setupPWA failed', function () {
       setupPWA();
@@ -117,19 +91,17 @@ function init() {
     });
   }, 100);
 
-  /* ==========================================================
-     ШАГ 5. SUPABASE — В ФОНЕ
-     ========================================================== */
+  /* ШАГ 5. SUPABASE В ФОНЕ */
   if (HAS_SUPABASE) {
     initSupabaseAsync()
-      .then(function (client) {
+      .then(async function (client) {
         if (!client) {
           updateSyncDot('local');
           return;
         }
 
         if (APP.coupleId) {
-          determineMyRole(APP.coupleId);
+          await determineMyRole(APP.coupleId);
 
           return loadFromSupabase()
             .then(function (ok) {
@@ -167,14 +139,9 @@ function init() {
       });
   }
 
-  /* ==========================================================
-     СЛУЖЕБНОЕ
-     ========================================================== */
-
-  /* При возврате на вкладку — пересчитываем стрик и обновляем UI */
+  /* Служебное */
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible') return;
-
     safeCall('LM-026', 'visibilitychange recalc', function () {
       recalcStats();
       saveState();
@@ -184,18 +151,14 @@ function init() {
     });
   });
 
-  /* Экспорт состояния для отладки через консоль */
   try {
     window.__LOVEMETER__ = {
       APP: APP,
       CONFIG: CONFIG,
       LM: (typeof LM !== 'undefined' ? LM : null),
       getState: function () {
-        try {
-          return JSON.parse(JSON.stringify(APP.state));
-        } catch (e) {
-          return APP.state;
-        }
+        try { return JSON.parse(JSON.stringify(APP.state)); }
+        catch (e) { return APP.state; }
       },
       reset: function () {
         storageRemove(CONFIG.STORAGE.state);
@@ -206,19 +169,9 @@ function init() {
         return LM.toText();
       }
     };
-  } catch (e) {
-    /* игнорируем */
-  }
+  } catch (e) { /* игнорируем */ }
 }
 
-
-/* ============================================================
-   ЗАПУСК
-   ============================================================
-   Если DOM ещё загружается — ждём DOMContentLoaded.
-   Если уже загружен (например, скрипт подключён с defer
-   или кэширован) — запускаемся сразу.
-   ============================================================ */
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', function () {
     safeCall('LM-028', 'init on DOMContentLoaded', function () {
