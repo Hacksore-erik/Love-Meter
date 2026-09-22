@@ -1,3 +1,9 @@
+/* ============================================================
+   SUPABASE — синхронизация пары, realtime, роли
+   ============================================================ */
+
+/* ---------- КОЛОНКИ (зависят от роли) ---------- */
+
 function myHideColumn() {
   return APP.myRole === 'you' ? 'hide_you' : 'hide_partner';
 }
@@ -22,6 +28,8 @@ function partnerGenderColumn() {
   return APP.myRole === 'you' ? 'gender_partner' : 'gender_you';
 }
 
+/* ---------- ИНИЦИАЛИЗАЦИЯ ---------- */
+
 function initSupabaseAsync() {
   if (!HAS_SUPABASE) return Promise.resolve(null);
   if (APP.supabaseLoading) return APP.supabaseLoading;
@@ -36,12 +44,18 @@ function initSupabaseAsync() {
       return APP.supabaseClient;
     } catch (e) {
       APP.supabaseClient = null;
+      if (typeof LM !== 'undefined') {
+        LM.record('LM-016', e.message || 'import supabase failed',
+          (e.stack || '').substring(0, 300));
+      }
       return null;
     }
   })();
 
   return APP.supabaseLoading;
 }
+
+/* ---------- РОЛЬ ---------- */
 
 async function determineMyRole(code) {
   if (!APP.supabaseClient) {
@@ -57,17 +71,19 @@ async function determineMyRole(code) {
       .maybeSingle();
 
     if (res.data && res.data.owner_id) {
-      if (res.data.owner_id === APP.myId) {
-        APP.myRole = 'you';
-      } else {
-        APP.myRole = 'partner';
-      }
+      APP.myRole = (res.data.owner_id === APP.myId) ? 'you' : 'partner';
       return;
     }
-  } catch (e) {}
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-021', e.message || 'determineMyRole failed', 'code=' + code);
+    }
+  }
 
   APP.myRole = 'partner';
 }
+
+/* ---------- ЗАГРУЗКА ---------- */
 
 async function loadFromSupabase() {
   if (!APP.supabaseClient || !APP.coupleId) return false;
@@ -79,7 +95,15 @@ async function loadFromSupabase() {
       .eq('id', APP.coupleId)
       .maybeSingle();
 
-    if (coupleRes.error || !coupleRes.data) return false;
+    if (coupleRes.error || !coupleRes.data) {
+      if (typeof LM !== 'undefined' && coupleRes.error) {
+        LM.record('LM-017',
+          coupleRes.error.message || 'couples.select failed',
+          'code=' + APP.coupleId);
+      }
+      return false;
+    }
+
     const couple = coupleRes.data;
 
     const sName = couple[myNameColumn()];
@@ -105,6 +129,15 @@ async function loadFromSupabase() {
       .select('*')
       .eq('couple_id', APP.coupleId);
 
+    if (votesRes.error) {
+      if (typeof LM !== 'undefined') {
+        LM.record('LM-017',
+          votesRes.error.message || 'votes.select failed',
+          'code=' + APP.coupleId);
+      }
+      return false;
+    }
+
     const votes = {};
     const rows = votesRes.data || [];
     for (let i = 0; i < rows.length; i++) {
@@ -120,9 +153,15 @@ async function loadFromSupabase() {
 
     return true;
   } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-017', e.message || 'loadFromSupabase crashed',
+        (e.stack || '').substring(0, 300));
+    }
     return false;
   }
 }
+
+/* ---------- ОТПРАВКА ---------- */
 
 async function pushVoteToSupabase(date, role, value) {
   if (!APP.supabaseClient || !APP.coupleId) return false;
@@ -141,8 +180,18 @@ async function pushVoteToSupabase(date, role, value) {
         { onConflict: 'couple_id,date,role' }
       );
 
-    return !res.error;
+    if (res.error) {
+      if (typeof LM !== 'undefined') {
+        LM.record('LM-018', res.error.message || 'upsert failed',
+          'date=' + date + ' role=' + role);
+      }
+      return false;
+    }
+    return true;
   } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-018', e.message || 'pushVote crashed', 'date=' + date);
+    }
     return false;
   }
 }
@@ -161,8 +210,18 @@ async function pushMyName() {
       .update(update)
       .eq('id', APP.coupleId);
 
-    return !res.error;
+    if (res.error) {
+      if (typeof LM !== 'undefined') {
+        LM.record('LM-022', res.error.message || 'pushMyName failed',
+          'code=' + APP.coupleId);
+      }
+      return false;
+    }
+    return true;
   } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-022', e.message || 'pushMyName crashed', '');
+    }
     return false;
   }
 }
@@ -180,8 +239,18 @@ async function pushMyHideFlag() {
       .update(update)
       .eq('id', APP.coupleId);
 
-    return !res.error;
+    if (res.error) {
+      if (typeof LM !== 'undefined') {
+        LM.record('LM-023', res.error.message || 'pushMyHideFlag failed',
+          'code=' + APP.coupleId);
+      }
+      return false;
+    }
+    return true;
   } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-023', e.message || 'pushMyHideFlag crashed', '');
+    }
     return false;
   }
 }
@@ -203,11 +272,23 @@ async function pushCoupleMeta() {
       .from('couples')
       .upsert(payload);
 
-    return !res.error;
+    if (res.error) {
+      if (typeof LM !== 'undefined') {
+        LM.record('LM-022', res.error.message || 'pushCoupleMeta failed',
+          'code=' + APP.coupleId);
+      }
+      return false;
+    }
+    return true;
   } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-022', e.message || 'pushCoupleMeta crashed', '');
+    }
     return false;
   }
 }
+
+/* ---------- СОЗДАНИЕ / ПРОВЕРКА ПАРЫ ---------- */
 
 async function createCoupleInSupabase(code) {
   if (!APP.supabaseClient) return false;
@@ -229,8 +310,17 @@ async function createCoupleInSupabase(code) {
       .from('couples')
       .insert(payload);
 
-    return !res.error;
+    if (res.error) {
+      if (typeof LM !== 'undefined') {
+        LM.record('LM-020', res.error.message || 'insert failed', 'code=' + code);
+      }
+      return false;
+    }
+    return true;
   } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-020', e.message || 'createCouple crashed', 'code=' + code);
+    }
     return false;
   }
 }
@@ -251,6 +341,8 @@ async function checkCoupleExists(code) {
   }
 }
 
+/* ---------- МАССОВАЯ СИНХРОНИЗАЦИЯ ---------- */
+
 async function syncAllLocalVotesToSupabase() {
   if (!APP.supabaseClient || !APP.coupleId) return;
 
@@ -267,6 +359,8 @@ async function syncAllLocalVotesToSupabase() {
 
   await pushCoupleMeta();
 }
+
+/* ---------- REALTIME ---------- */
 
 function subscribeRealtime() {
   if (!APP.supabaseClient || !APP.coupleId) return;
@@ -304,7 +398,12 @@ function subscribeRealtime() {
           updateSyncDot(status === 'SUBSCRIBED' ? 'on' : 'off');
         }
       });
-  } catch (e) {}
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-019', e.message || 'subscribeRealtime failed',
+        'code=' + APP.coupleId);
+    }
+  }
 }
 
 function handleRealtimeVote(payload) {
@@ -316,6 +415,7 @@ function handleRealtimeVote(payload) {
     const role = row.role;
     const value = row.value;
 
+    if (!date || !role) return;
     if (!APP.state.votes[date]) APP.state.votes[date] = {};
 
     if (payload.eventType === 'DELETE') {
@@ -329,14 +429,12 @@ function handleRealtimeVote(payload) {
 
     if (typeof renderAll === 'function') renderAll();
     if (typeof renderAchievements === 'function') renderAchievements();
-    if (typeof renderCalendar === 'function' &&
-        typeof isScreenActive === 'function' &&
-        isScreenActive('calendar')) {
+    if (typeof isScreenActive === 'function' && isScreenActive('calendar') &&
+        typeof renderCalendar === 'function') {
       renderCalendar();
     }
-    if (typeof renderChart === 'function' &&
-        typeof isScreenActive === 'function' &&
-        isScreenActive('chart')) {
+    if (typeof isScreenActive === 'function' && isScreenActive('chart') &&
+        typeof renderChart === 'function') {
       renderChart();
     }
 
@@ -346,7 +444,11 @@ function handleRealtimeVote(payload) {
         showToast(getPartnerName() + ' ' + getPartnerVerb() + ' оценку ' + value + ' 💕');
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-019', e.message || 'handleRealtimeVote crashed', '');
+    }
+  }
 }
 
 function handleRealtimeCouple(payload) {
@@ -401,10 +503,12 @@ function handleRealtimeCouple(payload) {
 
     if (typeof renderAll === 'function') renderAll();
     if (typeof renderProfile === 'function') renderProfile();
-    if (changed && typeof renderCoupleState === 'function') {
-      renderCoupleState();
+    if (changed && typeof renderCoupleState === 'function') renderCoupleState();
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-019', e.message || 'handleRealtimeCouple crashed', '');
     }
-  } catch (e) {}
+  }
 }
 
 function unsubscribeRealtime() {
