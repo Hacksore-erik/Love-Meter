@@ -9,7 +9,7 @@
 
 
 /* ============================================================
-   ГЛАВНАЯ — СЕРДЦЕ (состояние партнёра)
+   ГЛАВНАЯ — СЕРДЦЕ
    ============================================================ */
 
 const HEART_Y_TOP = -5;
@@ -38,6 +38,53 @@ function setStopColors(grad, colors) {
   }
 }
 
+/* Палитры уровней: возвращает { emptyColors, liquidColors, glow, status, pillBg, pillColor, ringColor } */
+function heartPaletteFor(pct) {
+  if (pct <= 20) {
+    return {
+      emptyColors:  ['#e8e8ee', '#d8d8e0'],
+      liquidColors: ['#c7ccd6', '#a8b0bd', '#8e8e93'],
+      glow: 'rgba(142,142,147,0.28)',
+      status: 'Нужен тёплый разговор 💬',
+      pillBg: '#f2f2f7', pillColor: '#6e6e73', ringColor: '#b8bcc7'
+    };
+  }
+  if (pct <= 40) {
+    return {
+      emptyColors:  ['#eaf1ff', '#dbe6ff'],
+      liquidColors: ['#a9c6ff', '#7aa7ff', '#5e7dff'],
+      glow: 'rgba(94,125,255,0.3)',
+      status: 'Немного прохладно ❄️',
+      pillBg: '#eef2ff', pillColor: '#3d5eff', ringColor: '#7aa7ff'
+    };
+  }
+  if (pct <= 60) {
+    return {
+      emptyColors:  ['#f5eeff', '#ebe0ff'],
+      liquidColors: ['#d4b5ff', '#b98aff', '#a56bff'],
+      glow: 'rgba(165,107,255,0.3)',
+      status: 'Спокойно и стабильно 💜',
+      pillBg: '#f5eeff', pillColor: '#7d3dff', ringColor: '#b98aff'
+    };
+  }
+  if (pct <= 80) {
+    return {
+      emptyColors:  ['#ffe5eb', '#ffd0da'],
+      liquidColors: ['#ffb1c1', '#ff7da1', '#ff2d55'],
+      glow: 'rgba(255,94,125,0.35)',
+      status: 'Между вами тепло 💗',
+      pillBg: '#fff0f3', pillColor: '#ff2d55', ringColor: '#ff7da1'
+    };
+  }
+  return {
+    emptyColors:  ['#ffe0e8', '#ffc8d5'],
+    liquidColors: ['#ff8fa3', '#ff5e7d', '#ff2d55'],
+    glow: 'rgba(255,45,85,0.42)',
+    status: 'Любовь пылает! ❤️‍🔥',
+    pillBg: '#ffe9ec', pillColor: '#d62e4d', ringColor: '#ff2d55'
+  };
+}
+
 function setHeartLevel(pct) {
   const waveFront = $('waveFront');
   const percentEl = $('heartPercent');
@@ -46,59 +93,51 @@ function setHeartLevel(pct) {
   const coupleRing = $('coupleStateRing');
   const emptyGrad = $('emptyGrad');
   const liquidGrad = $('liquidGrad');
-  if (!waveFront || !percentEl) return null;
+  if (!waveFront || !percentEl) return;
 
-  try {
-    waveFront.setAttribute('d', wavePath(percentToY(pct)));
-    percentEl.textContent = pct + '%';
+  const p = heartPaletteFor(pct);
 
-    let emptyColors, liquidColors, glow, status, pillBg, pillColor, ringColor;
+  waveFront.setAttribute('d', wavePath(percentToY(pct)));
+  percentEl.textContent = pct + '%';
 
-    if (pct <= 20) {
-      emptyColors  = ['#e8e8ee', '#d8d8e0'];
-      liquidColors = ['#c7ccd6', '#a8b0bd', '#8e8e93'];
-      glow = 'rgba(142,142,147,0.28)';
-      status = 'Нужен тёплый разговор 💬';
-      pillBg = '#f2f2f7'; pillColor = '#6e6e73'; ringColor = '#b8bcc7';
-    } else if (pct <= 40) {
-      emptyColors  = ['#eaf1ff', '#dbe6ff'];
-      liquidColors = ['#a9c6ff', '#7aa7ff', '#5e7dff'];
-      glow = 'rgba(94,125,255,0.3)';
-      status = 'Немного прохладно ❄️';
-      pillBg = '#eef2ff'; pillColor = '#3d5eff'; ringColor = '#7aa7ff';
-    } else if (pct <= 60) {
-      emptyColors  = ['#f5eeff', '#ebe0ff'];
-      liquidColors = ['#d4b5ff', '#b98aff', '#a56bff'];
-      glow = 'rgba(165,107,255,0.3)';
-      status = 'Спокойно и стабильно 💜';
-      pillBg = '#f5eeff'; pillColor = '#7d3dff'; ringColor = '#b98aff';
-    } else if (pct <= 80) {
-      emptyColors  = ['#ffe5eb', '#ffd0da'];
-      liquidColors = ['#ffb1c1', '#ff7da1', '#ff2d55'];
-      glow = 'rgba(255,94,125,0.35)';
-      status = 'Между вами тепло 💗';
-      pillBg = '#fff0f3'; pillColor = '#ff2d55'; ringColor = '#ff7da1';
-    } else {
-      emptyColors  = ['#ffe0e8', '#ffc8d5'];
-      liquidColors = ['#ff8fa3', '#ff5e7d', '#ff2d55'];
-      glow = 'rgba(255,45,85,0.42)';
-      status = 'Любовь пылает! ❤️‍🔥';
-      pillBg = '#ffe9ec'; pillColor = '#d62e4d'; ringColor = '#ff2d55';
-    }
+  setStopColors(emptyGrad, p.emptyColors);
+  setStopColors(liquidGrad, p.liquidColors);
 
-    setStopColors(emptyGrad, emptyColors);
-    setStopColors(liquidGrad, liquidColors);
-    if (heartGlow) heartGlow.style.setProperty('--glow-color', glow);
-    if (statusPill) {
-      statusPill.textContent = status;
-      statusPill.style.background = pillBg;
-      statusPill.style.color = pillColor;
-    }
-    if (coupleRing) coupleRing.style.borderColor = ringColor;
+  if (heartGlow) heartGlow.style.setProperty('--glow-color', p.glow);
+  if (statusPill) {
+    statusPill.textContent = p.status;
+    statusPill.style.background = p.pillBg;
+    statusPill.style.color = p.pillColor;
+  }
+  if (coupleRing) coupleRing.style.borderColor = p.ringColor;
+}
 
-    return status;
-  } catch (e) {
-    return null;
+/* Специальный случай: нет данных / скрыто */
+function setHeartEmpty(hidden) {
+  const waveFront = $('waveFront');
+  const percentEl = $('heartPercent');
+  const statusPill = $('statusPill');
+  const heartGlow = $('heartGlow');
+  const coupleRing = $('coupleStateRing');
+  const emptyGrad = $('emptyGrad');
+  const liquidGrad = $('liquidGrad');
+
+  setStopColors(emptyGrad, ['#e8e8ee', '#d8d8e0']);
+  setStopColors(liquidGrad, ['#c7ccd6', '#a8b0bd', '#8e8e93']);
+
+  if (waveFront) waveFront.setAttribute('d', wavePath(percentToY(0)));
+  if (heartGlow) heartGlow.style.setProperty('--glow-color', 'rgba(142,142,147,0.28)');
+  if (coupleRing) coupleRing.style.borderColor = '#b8bcc7';
+
+  if (percentEl) {
+    percentEl.textContent = hidden ? '🔒' : '—%';
+  }
+  if (statusPill) {
+    statusPill.textContent = hidden
+      ? 'Партнёр скрыл свои оценки'
+      : 'Партнёр пока не отмечал настроение';
+    statusPill.style.background = '#f2f2f7';
+    statusPill.style.color = '#6e6e73';
   }
 }
 
@@ -115,6 +154,8 @@ function setPartnerOnline(on) {
     partnerStatus.classList.toggle('online', isOn);
   }
 }
+
+/* ---------- Meta-row «обновлено X назад» ---------- */
 
 let _updateHintSeconds = 2;
 
@@ -135,168 +176,154 @@ function updateUpdatedHint() {
   if (_updateHintSeconds > 600) _updateHintSeconds = 2;
 }
 
-function updateHeart(animated) {
-  const percentEl = $('heartPercent');
-  const statusEl = $('statusPill');
-  const heartGlow = $('heartGlow');
-  const coupleRing = $('coupleStateRing');
-  const waveFront = $('waveFront');
-  if (!percentEl || !statusEl) return;
+/* ---------- Главный рендер сердца ---------- */
 
-  const partner = computePartnerPercent();
-  const pct = partner.percent;
+function updateHeart() {
+  try {
+    const partner = computePartnerPercent();
 
-  // Особые случаи: скрыто / нет данных
-  if (partner.hidden || !partner.hasData) {
-    const emptyGrad = $('emptyGrad');
-    const liquidGrad = $('liquidGrad');
-    setStopColors(emptyGrad, ['#e8e8ee', '#d8d8e0']);
-    setStopColors(liquidGrad, ['#c7ccd6', '#a8b0bd', '#8e8e93']);
-    if (waveFront) waveFront.setAttribute('d', wavePath(percentToY(0)));
-    if (heartGlow) heartGlow.style.setProperty('--glow-color', 'rgba(142,142,147,0.28)');
-    if (coupleRing) coupleRing.style.borderColor = '#b8bcc7';
+    if (partner.hidden || !partner.hasData) {
+      setHeartEmpty(partner.hidden);
+      updateUpdatedHint();
+      return;
+    }
 
-    if (partner.hidden) {
-      percentEl.textContent = '🔒';
-      statusEl.textContent = 'Партнёр скрыл свои оценки';
-      statusEl.style.background = '#f2f2f7';
-      statusEl.style.color = '#6e6e73';
-    } else {
-      percentEl.textContent = '—%';
-      statusEl.textContent = 'Партнёр пока не отмечал настроение';
-      statusEl.style.background = '#f2f2f7';
-      statusEl.style.color = '#6e6e73';
+    setHeartLevel(partner.percent);
+
+    if (!partner.votedToday && partner.lastVoteDaysAgo !== null) {
+      const statusPill = $('statusPill');
+      if (statusPill) {
+        const days = partner.lastVoteDaysAgo;
+        let daysText;
+        if (days === 1) daysText = 'вчера';
+        else if (days === 2) daysText = '2 дня назад';
+        else if (days < 7) daysText = days + ' дней назад';
+        else daysText = 'давно';
+
+        statusPill.textContent = statusPill.textContent + ' • последний голос ' + daysText;
+      }
     }
 
     updateUpdatedHint();
-    return;
-  }
-
-  // Обычный случай — уровень по проценту
-  setHeartLevel(pct);
-
-  // Дополнение к статусу: когда последний голос
-  if (!partner.votedToday && partner.lastVoteDaysAgo !== null) {
-    const days = partner.lastVoteDaysAgo;
-    let daysText;
-    if (days === 1) daysText = 'вчера';
-    else if (days === 2) daysText = '2 дня назад';
-    else if (days < 7) daysText = days + ' дней назад';
-    else daysText = 'давно';
-
-    if (statusEl) {
-      statusEl.textContent = statusEl.textContent + ' • последний голос ' + daysText;
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-006', e.message || 'updateHeart failed',
+        (e.stack || '').substring(0, 300));
     }
   }
-
-  updateUpdatedHint();
 }
 
 
 /* ============================================================
    ГЛАВНАЯ — БЛОК «ОБЩЕЕ СОСТОЯНИЕ ПАРЫ»
    ============================================================ */
+
 function renderCoupleState() {
-  const percentEl = $('coupleStatePercent');
-  const statusEl = $('coupleStateStatus');
-  const segBtns = document.querySelectorAll('.couple-state-period');
-  const ringEl = $('coupleStateRing');
+  try {
+    const percentEl = $('coupleStatePercent');
+    const statusEl = $('coupleStateStatus');
+    const segBtns = document.querySelectorAll('.couple-state-period');
+    const ringEl = $('coupleStateRing');
 
-  if (!percentEl || !statusEl) return;
+    if (!percentEl || !statusEl) return;
 
-  segBtns.forEach(function (btn) {
-    btn.classList.toggle('active', btn.dataset.period === APP.coupleStatePeriod);
-  });
+    segBtns.forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.period === APP.coupleStatePeriod);
+    });
 
-  const result = computeCouplePercent(APP.coupleStatePeriod);
+    const result = computeCouplePercent(APP.coupleStatePeriod);
 
-  percentEl.textContent = result.hasData ? (result.percent + '%') : '—';
+    percentEl.textContent = result.hasData ? (result.percent + '%') : '—';
 
-  if (ringEl) {
-    let ringColor = 'var(--text-soft)';
-    if (result.hasData) {
-      if (result.percent <= 20) ringColor = '#b8bcc7';
-      else if (result.percent <= 40) ringColor = '#7aa7ff';
-      else if (result.percent <= 60) ringColor = '#b98aff';
-      else if (result.percent <= 80) ringColor = '#ff7da1';
-      else ringColor = '#ff2d55';
+    if (ringEl) {
+      let ringColor = '#b8bcc7';
+      if (result.hasData) {
+        ringColor = heartPaletteFor(result.percent).ringColor;
+      }
+      ringEl.style.borderColor = ringColor;
     }
-    ringEl.style.borderColor = ringColor;
-  }
 
-  let status;
-  if (!result.hasData) {
-    if (result.anyHidden) {
-      status = 'Недостаточно данных — часть оценок скрыта';
+    let status;
+    if (!result.hasData) {
+      status = result.anyHidden
+        ? 'Недостаточно данных — часть оценок скрыта'
+        : 'Пока нет оценок за этот период';
     } else {
-      status = 'Пока нет оценок за этот период';
-    }
-  } else {
-    if (result.percent <= 20) status = 'Нужен тёплый разговор 💬';
-    else if (result.percent <= 40) status = 'Немного прохладно ❄️';
-    else if (result.percent <= 60) status = 'Спокойно и стабильно 💜';
-    else if (result.percent <= 80) status = 'Между вами тепло 💗';
-    else status = 'Любовь пылает! ❤️‍🔥';
+      status = heartPaletteFor(result.percent).status;
 
-    if (result.iHide && result.partnerHide) {
-      status = status + ' • часть оценок скрыта у обоих';
-    } else if (result.iHide) {
-      status = status + ' • твои оценки скрыты';
-    } else if (result.partnerHide) {
-      status = status + ' • оценки партнёра скрыты';
+      if (result.iHide && result.partnerHide) {
+        status += ' • часть оценок скрыта у обоих';
+      } else if (result.iHide) {
+        status += ' • твои оценки скрыты';
+      } else if (result.partnerHide) {
+        status += ' • оценки партнёра скрыты';
+      }
+    }
+
+    statusEl.textContent = status;
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-004', e.message || 'renderCoupleState failed', '');
     }
   }
-
-  statusEl.textContent = status;
 }
 
 
 /* ============================================================
    ГЛАВНАЯ — ГОЛОСОВАНИЕ
    ============================================================ */
+
 function renderVoteButtons() {
-  const myVote = getTodayVote();
-  const btns = document.querySelectorAll('.vote-btn');
-  const question = $('voteQuestion');
-  const hint = $('voteHint');
-  const changeBtn = $('voteChange');
-  if (!btns.length || !question || !hint) return;
+  try {
+    const myVote = getTodayVote();
+    const btns = document.querySelectorAll('.vote-btn');
+    const question = $('voteQuestion');
+    const hint = $('voteHint');
+    const changeBtn = $('voteChange');
+    if (!btns.length || !question || !hint) return;
 
-  btns.forEach(function (btn, i) {
-    const v = i + 1;
-    if (myVote && v <= myVote) {
-      btn.textContent = '❤️';
-      btn.classList.add('active');
+    btns.forEach(function (btn, i) {
+      const v = i + 1;
+      if (myVote && v <= myVote) {
+        btn.textContent = '❤️';
+        btn.classList.add('active');
+      } else {
+        btn.textContent = '🤍';
+        btn.classList.remove('active');
+      }
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    });
+
+    if (myVote) {
+      question.textContent = 'Спасибо! Партнёр тоже может проголосовать 💕';
+      hint.textContent = 'Твой голос: ' + myVote + ' из 5';
+      btns.forEach(function (b) { b.disabled = true; b.style.opacity = '0.75'; });
+      if (changeBtn) changeBtn.classList.add('visible');
     } else {
-      btn.textContent = '🤍';
-      btn.classList.remove('active');
+      question.textContent = 'Как ты себя чувствуешь сегодня в отношениях?';
+      hint.textContent = 'Можно менять один раз в день';
+      if (changeBtn) changeBtn.classList.remove('visible');
     }
-    btn.disabled = false;
-    btn.style.opacity = '1';
-  });
-
-  if (myVote) {
-    question.textContent = 'Спасибо! Партнёр тоже может проголосовать 💕';
-    hint.textContent = 'Твой голос: ' + myVote + ' из 5';
-    btns.forEach(function (b) { b.disabled = true; b.style.opacity = '0.75'; });
-    if (changeBtn) changeBtn.classList.add('visible');
-  } else {
-    question.textContent = 'Как ты себя чувствуешь сегодня в отношениях?';
-    hint.textContent = 'Можно менять один раз в день';
-    if (changeBtn) changeBtn.classList.remove('visible');
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-007', e.message || 'renderVoteButtons failed', '');
+    }
   }
 }
 
 function unlockVoteButtons() {
-  const btns = document.querySelectorAll('.vote-btn');
-  const question = $('voteQuestion');
-  const hint = $('voteHint');
-  const changeBtn = $('voteChange');
+  try {
+    const btns = document.querySelectorAll('.vote-btn');
+    const question = $('voteQuestion');
+    const hint = $('voteHint');
+    const changeBtn = $('voteChange');
 
-  btns.forEach(function (b) { b.disabled = false; b.style.opacity = '1'; });
-  if (question) question.textContent = 'Как ты себя чувствуешь сегодня в отношениях?';
-  if (hint) hint.textContent = 'Можно менять один раз в день';
-  if (changeBtn) changeBtn.classList.remove('visible');
+    btns.forEach(function (b) { b.disabled = false; b.style.opacity = '1'; });
+    if (question) question.textContent = 'Как ты себя чувствуешь сегодня в отношениях?';
+    if (hint) hint.textContent = 'Можно менять один раз в день';
+    if (changeBtn) changeBtn.classList.remove('visible');
+  } catch (e) {}
 }
 
 async function handleVote(vote) {
@@ -304,12 +331,7 @@ async function handleVote(vote) {
     const current = getTodayVote();
     const key = todayStr();
 
-    if (current && current !== vote) {
-      // Смена голоса — лимит 1 раз в день
-      // (проверку лимита оставляем на будущее; пока разрешаем менять)
-    } else if (current === vote) {
-      return;
-    }
+    if (current === vote) return;
 
     if (!APP.state.votes[key]) APP.state.votes[key] = {};
     APP.state.votes[key][APP.myRole] = vote;
@@ -341,7 +363,7 @@ async function handleVote(vote) {
       }
     }
 
-    updateHeart(true);
+    updateHeart();
     renderVoteButtons();
     renderCoupleState();
     renderAll();
@@ -354,18 +376,24 @@ async function handleVote(vote) {
       showToast('Голос учтён! 💕');
     }
   } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-008', e.message || 'handleVote failed', 'vote=' + vote);
+    }
     showToast('Не удалось сохранить голос');
   }
 }
 
 function onVoteChangeClick() {
-  unlockVoteButtons();
+  try {
+    unlockVoteButtons();
+  } catch (e) {}
 }
 
 
 /* ============================================================
    КОНФЕТТИ
    ============================================================ */
+
 function spawnConfetti() {
   try {
     const emojis = ['✨', '💖', '💕', '💗', '⭐️', '💫'];
@@ -396,62 +424,68 @@ function spawnConfetti() {
         try { el.remove(); } catch (e) {}
       }, 2000);
     }
-  } catch (e) { /* игнорируем */ }
+  } catch (e) {}
 }
 
 
 /* ============================================================
    НАГРАДЫ
    ============================================================ */
+
 function renderAchievements() {
-  const grid = $('achievementsGrid');
-  if (!grid) return;
+  try {
+    const grid = $('achievementsGrid');
+    if (!grid) return;
 
-  let unlockedCount = 0;
-  let html = '';
+    let unlockedCount = 0;
+    let html = '';
 
-  CONFIG.ACHIEVEMENTS.forEach(function (a) {
-    const progress = getAchievementProgress(a);
-    const isUnlocked = progress >= a.max;
-    if (isUnlocked) unlockedCount++;
+    CONFIG.ACHIEVEMENTS.forEach(function (a) {
+      const progress = getAchievementProgress(a);
+      const isUnlocked = progress >= a.max;
+      if (isUnlocked) unlockedCount++;
 
-    const pct = clamp((progress / a.max) * 100, 0, 100);
-    const shown = Math.min(progress, a.max);
+      const pct = clamp((progress / a.max) * 100, 0, 100);
+      const shown = Math.min(progress, a.max);
 
-    html += '<div class="ach-card ' + (isUnlocked ? 'unlocked' : 'locked') + '">';
-    if (isUnlocked) {
-      html += '<div class="ach-check" aria-hidden="true">✓</div>';
+      html += '<div class="ach-card ' + (isUnlocked ? 'unlocked' : 'locked') + '">';
+      if (isUnlocked) {
+        html += '<div class="ach-check" aria-hidden="true">✓</div>';
+      }
+      html += '<div class="ach-emoji" aria-hidden="true">' + a.emoji + '</div>';
+      html += '<div class="ach-name">' + a.name + '</div>';
+      html += '<div class="ach-desc">' + a.desc + '</div>';
+      html += '<div class="ach-progress-row">';
+      html += '<div class="ach-bar-bg">';
+      html += '<div class="ach-bar-fill" style="width:' + pct + '%"></div>';
+      html += '</div>';
+      html += '<div class="ach-progress-text">' + shown + '/' + a.max + '</div>';
+      html += '</div>';
+      html += '</div>';
+    });
+
+    grid.innerHTML = html;
+
+    const sub = $('awardsSubtitle');
+    if (sub) sub.textContent = 'Открыто ' + unlockedCount + ' из ' + CONFIG.ACHIEVEMENTS.length;
+    const ss = $('statStreak');
+    if (ss) ss.textContent = APP.state.streak;
+    const st = $('statTotal');
+    if (st) st.textContent = APP.state.totalVotes;
+    const sm = $('statMedals');
+    if (sm) sm.textContent = unlockedCount;
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-009', e.message || 'renderAchievements failed', '');
     }
-    html += '<div class="ach-emoji" aria-hidden="true">' + a.emoji + '</div>';
-    html += '<div class="ach-name">' + a.name + '</div>';
-    html += '<div class="ach-desc">' + a.desc + '</div>';
-    html += '<div class="ach-progress-row">';
-    html += '<div class="ach-bar-bg">';
-    html += '<div class="ach-bar-fill" style="width:' + pct + '%"></div>';
-    html += '</div>';
-    html += '<div class="ach-progress-text">' + shown + '/' + a.max + '</div>';
-    html += '</div>';
-    html += '</div>';
-  });
-
-  grid.innerHTML = html;
-
-  const sub = $('awardsSubtitle');
-  if (sub) {
-    sub.textContent = 'Открыто ' + unlockedCount + ' из ' + CONFIG.ACHIEVEMENTS.length;
   }
-  const ss = $('statStreak');
-  if (ss) ss.textContent = APP.state.streak;
-  const st = $('statTotal');
-  if (st) st.textContent = APP.state.totalVotes;
-  const sm = $('statMedals');
-  if (sm) sm.textContent = unlockedCount;
 }
 
 
 /* ============================================================
    КАЛЕНДАРЬ
    ============================================================ */
+
 function initCalendar() {
   const now = new Date();
   APP.calYear = now.getFullYear();
@@ -459,220 +493,238 @@ function initCalendar() {
 }
 
 function renderCalendar() {
-  const label = $('calMonthLabel');
-  const grid = $('calGrid');
-  if (!label || !grid) return;
+  try {
+    const label = $('calMonthLabel');
+    const grid = $('calGrid');
+    if (!label || !grid) return;
 
-  label.textContent = MONTHS_FULL[APP.calMonth] + ' ' + APP.calYear;
+    label.textContent = MONTHS_FULL[APP.calMonth] + ' ' + APP.calYear;
 
-  const firstDay = new Date(APP.calYear, APP.calMonth, 1);
-  const daysInMonth = new Date(APP.calYear, APP.calMonth + 1, 0).getDate();
+    const firstDay = new Date(APP.calYear, APP.calMonth, 1);
+    const daysInMonth = new Date(APP.calYear, APP.calMonth + 1, 0).getDate();
 
-  let startDow = firstDay.getDay() - 1;
-  if (startDow < 0) startDow = 6;
+    let startDow = firstDay.getDay() - 1;
+    if (startDow < 0) startDow = 6;
 
-  const iHide = getMyHideFlag();
-  const partnerHide = getPartnerHideFlag();
+    const iHide = getMyHideFlag();
+    const partnerHide = getPartnerHideFlag();
 
-  let html = '';
+    let html = '';
 
-  for (let i = 0; i < startDow; i++) {
-    html += '<div class="cal-cell" aria-hidden="true"></div>';
-  }
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateKey = APP.calYear + '-' + pad(APP.calMonth + 1) + '-' + pad(d);
-    const v = APP.state.votes[dateKey];
-
-    let circleStyle = '';
-    let bothClass = '';
-
-    if (v) {
-      const visibleVals = [];
-      if (v.you && !iHide) visibleVals.push(v.you);
-      if (v.partner && !partnerHide) visibleVals.push(v.partner);
-
-      if (visibleVals.length) {
-        const moodVal = Math.round(avg(visibleVals));
-
-        if (v.you && v.partner && !iHide && !partnerHide) {
-          bothClass = ' both';
-        } else if (v.you && v.partner && (iHide || partnerHide)) {
-          bothClass = ' both hidden-some';
-        }
-
-        circleStyle = 'background:' + CONFIG.MOODS[moodVal - 1] + ';color:#fff;';
-      } else if (v.you || v.partner) {
-        circleStyle = 'background:#f2f2f7;color:#8e8e93;';
-      }
+    for (let i = 0; i < startDow; i++) {
+      html += '<div class="cal-cell" aria-hidden="true"></div>';
     }
 
-    html += '<button type="button" class="cal-cell" '
-         + 'data-date="' + dateKey + '" '
-         + 'data-day="' + d + '" '
-         + 'aria-label="' + d + ' число">';
-    html += '<div class="cal-day'
-         + (v ? ' has-data' : ' empty')
-         + bothClass
-         + '" style="' + circleStyle + '">' + d + '</div>';
-    html += '</button>';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateKey = APP.calYear + '-' + pad(APP.calMonth + 1) + '-' + pad(d);
+      const v = APP.state.votes[dateKey];
+
+      let circleStyle = '';
+      let bothClass = '';
+
+      if (v) {
+        const visibleVals = [];
+        if (v.you && !iHide) visibleVals.push(v.you);
+        if (v.partner && !partnerHide) visibleVals.push(v.partner);
+
+        if (visibleVals.length) {
+          const moodVal = Math.round(avg(visibleVals));
+
+          if (v.you && v.partner && !iHide && !partnerHide) bothClass = ' both';
+          else if (v.you && v.partner && (iHide || partnerHide)) bothClass = ' both hidden-some';
+
+          circleStyle = 'background:' + CONFIG.MOODS[moodVal - 1] + ';color:#fff;';
+        } else if (v.you || v.partner) {
+          circleStyle = 'background:#f2f2f7;color:#8e8e93;';
+        }
+      }
+
+      html += '<button type="button" class="cal-cell" '
+           + 'data-date="' + dateKey + '" '
+           + 'data-day="' + d + '" '
+           + 'aria-label="' + d + ' число">';
+      html += '<div class="cal-day'
+           + (v ? ' has-data' : ' empty')
+           + bothClass
+           + '" style="' + circleStyle + '">' + d + '</div>';
+      html += '</button>';
+    }
+
+    grid.innerHTML = html;
+
+    renderInsight();
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-010', e.message || 'renderCalendar failed', '');
+    }
   }
-
-  grid.innerHTML = html;
-
-  renderInsight();
 }
 
 function onCalCellClick(dateKey, day) {
-  const v = APP.state.votes[dateKey];
-  const monthName = MONTHS_GENITIVE[APP.calMonth];
+  try {
+    const v = APP.state.votes[dateKey];
+    const monthName = MONTHS_GENITIVE[APP.calMonth];
 
-  if (!v) {
-    showToast(day + ' ' + monthName + ': нет данных');
-    return;
-  }
+    if (!v) {
+      showToast(day + ' ' + monthName + ': нет данных');
+      return;
+    }
 
-  const iHide = getMyHideFlag();
-  const partnerHide = getPartnerHideFlag();
+    const iHide = getMyHideFlag();
+    const partnerHide = getPartnerHideFlag();
 
-  const parts = [];
-  if (v.you) parts.push(iHide ? 'ты •••' : 'ты ' + v.you);
-  if (v.partner) parts.push(partnerHide ? 'партнёр •••' : 'партнёр ' + v.partner);
+    const parts = [];
+    if (v.you) parts.push(iHide ? 'ты •••' : 'ты ' + v.you);
+    if (v.partner) parts.push(partnerHide ? 'партнёр •••' : 'партнёр ' + v.partner);
 
-  showToast(day + ' ' + monthName + ': ' + parts.join(', '));
+    showToast(day + ' ' + monthName + ': ' + parts.join(', '));
+  } catch (e) {}
 }
 
 function renderInsight() {
-  const el = $('insightText');
-  if (!el) return;
+  try {
+    const el = $('insightText');
+    if (!el) return;
 
-  const insight = computeMonthlyInsight(APP.calYear, APP.calMonth);
+    const insight = computeMonthlyInsight(APP.calYear, APP.calMonth);
 
-  if (!insight.count) {
-    el.textContent = 'Пока нет данных за этот месяц.';
-    return;
-  }
+    if (!insight.count) {
+      el.textContent = 'Пока нет данных за этот месяц.';
+      return;
+    }
 
-  let html = 'Средняя оценка месяца — <b>' + insight.avgMonth + ' из 5</b>. ';
+    let html = 'Средняя оценка месяца — <b>' + insight.avgMonth + ' из 5</b>. ';
 
-  if (insight.bestDay) {
-    html += 'Лучший день — <b>' + insight.bestDay + ' число</b>. ';
-  }
+    if (insight.bestDay) {
+      html += 'Лучший день — <b>' + insight.bestDay + ' число</b>. ';
+    }
 
-  html += 'Оба партнёра голосовали <b>'
-       + insight.bothDays + ' из ' + insight.daysInMonth
-       + '</b> дней.';
+    html += 'Оба партнёра голосовали <b>'
+         + insight.bothDays + ' из ' + insight.daysInMonth
+         + '</b> дней.';
 
-  el.innerHTML = html;
+    el.innerHTML = html;
+  } catch (e) {}
 }
 
 function prevMonth() {
-  APP.calMonth--;
-  if (APP.calMonth < 0) { APP.calMonth = 11; APP.calYear--; }
-  renderCalendar();
+  try {
+    APP.calMonth--;
+    if (APP.calMonth < 0) { APP.calMonth = 11; APP.calYear--; }
+    renderCalendar();
+  } catch (e) {}
 }
 
 function nextMonth() {
-  APP.calMonth++;
-  if (APP.calMonth > 11) { APP.calMonth = 0; APP.calYear++; }
-  renderCalendar();
+  try {
+    APP.calMonth++;
+    if (APP.calMonth > 11) { APP.calMonth = 0; APP.calYear++; }
+    renderCalendar();
+  } catch (e) {}
 }
 
 
 /* ============================================================
    ДИНАМИКА — ГРАФИК
    ============================================================ */
+
 function renderChart() {
-  const svg = $('chartSvg');
-  if (!svg) return;
+  try {
+    const svg = $('chartSvg');
+    if (!svg) return;
 
-  const points = getChartData(APP.currentPeriod);
-  const validPoints = points.filter(function (p) { return p.value !== null; });
+    const points = getChartData(APP.currentPeriod);
+    const validPoints = points.filter(function (p) { return p.value !== null; });
 
-  const avgVal = validPoints.length
-    ? avg(validPoints.map(function (p) { return p.value; }))
-    : 0;
+    const avgVal = validPoints.length
+      ? avg(validPoints.map(function (p) { return p.value; }))
+      : 0;
 
-  const avgEl = $('chartAvg');
-  if (avgEl) avgEl.textContent = validPoints.length ? avgVal.toFixed(1) : '—';
+    const avgEl = $('chartAvg');
+    if (avgEl) avgEl.textContent = validPoints.length ? avgVal.toFixed(1) : '—';
 
-  renderDelta(validPoints);
+    renderDelta(validPoints);
 
-  const W = 320, H = 180, padL = 28, padR = 8, padT = 10, padB = 10;
-  const plotW = W - padL - padR;
-  const plotH = H - padT - padB;
+    const W = 320, H = 180, padL = 28, padR = 8, padT = 10, padB = 10;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
 
-  const n = points.length;
-  const stepX = n > 1 ? plotW / (n - 1) : plotW;
+    const n = points.length;
+    const stepX = n > 1 ? plotW / (n - 1) : plotW;
 
-  const mapped = points.map(function (p, i) {
-    return {
-      x: padL + i * stepX,
-      y: p.value !== null
-        ? padT + plotH - ((p.value - 1) / 4) * plotH
-        : null,
-      value: p.value,
-      label: p.label
-    };
-  });
+    const mapped = points.map(function (p, i) {
+      return {
+        x: padL + i * stepX,
+        y: p.value !== null
+          ? padT + plotH - ((p.value - 1) / 4) * plotH
+          : null,
+        value: p.value,
+        label: p.label
+      };
+    });
 
-  const validMapped = mapped.filter(function (p) { return p.y !== null; });
+    const validMapped = mapped.filter(function (p) { return p.y !== null; });
 
-  let c = '';
+    let c = '';
 
-  [1, 3, 5].forEach(function (v) {
-    const y = padT + plotH - ((v - 1) / 4) * plotH;
-    c += '<line x1="' + padL + '" y1="' + y + '" '
-       + 'x2="' + (W - padR) + '" y2="' + y + '" '
-       + 'stroke="#f2f2f7" stroke-width="1" stroke-dasharray="4,4"/>';
-    c += '<text x="' + (padL - 6) + '" y="' + (y + 3) + '" '
-       + 'font-size="9" fill="#8e8e93" text-anchor="end">' + v + '</text>';
-  });
+    [1, 3, 5].forEach(function (v) {
+      const y = padT + plotH - ((v - 1) / 4) * plotH;
+      c += '<line x1="' + padL + '" y1="' + y + '" '
+         + 'x2="' + (W - padR) + '" y2="' + y + '" '
+         + 'stroke="#f2f2f7" stroke-width="1" stroke-dasharray="4,4"/>';
+      c += '<text x="' + (padL - 6) + '" y="' + (y + 3) + '" '
+         + 'font-size="9" fill="#8e8e93" text-anchor="end">' + v + '</text>';
+    });
 
-  c += '<defs>'
-     + '<linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">'
-     + '<stop offset="0%" stop-color="rgba(255,45,85,0.25)"/>'
-     + '<stop offset="100%" stop-color="rgba(255,45,85,0)"/>'
-     + '</linearGradient>'
-     + '</defs>';
+    c += '<defs>'
+       + '<linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">'
+       + '<stop offset="0%" stop-color="rgba(255,45,85,0.25)"/>'
+       + '<stop offset="100%" stop-color="rgba(255,45,85,0)"/>'
+       + '</linearGradient>'
+       + '</defs>';
 
-  if (validMapped.length >= 2) {
-    const pathD = catmullRomPath(validMapped);
-    const areaD = pathD
-      + ' L ' + validMapped[validMapped.length - 1].x + ',' + (padT + plotH)
-      + ' L ' + validMapped[0].x + ',' + (padT + plotH)
-      + ' Z';
+    if (validMapped.length >= 2) {
+      const pathD = catmullRomPath(validMapped);
+      const areaD = pathD
+        + ' L ' + validMapped[validMapped.length - 1].x + ',' + (padT + plotH)
+        + ' L ' + validMapped[0].x + ',' + (padT + plotH)
+        + ' Z';
 
-    c += '<path d="' + areaD + '" fill="url(#areaGrad)"/>';
-    c += '<path class="chart-line" d="' + pathD + '" '
-       + 'fill="none" stroke="#ff2d55" stroke-width="3" '
-       + 'stroke-linecap="round" stroke-linejoin="round"/>';
-  } else if (validMapped.length === 1) {
-    c += '<circle cx="' + validMapped[0].x + '" cy="' + validMapped[0].y + '" '
-       + 'r="4" fill="#ff2d55"/>';
+      c += '<path d="' + areaD + '" fill="url(#areaGrad)"/>';
+      c += '<path class="chart-line" d="' + pathD + '" '
+         + 'fill="none" stroke="#ff2d55" stroke-width="3" '
+         + 'stroke-linecap="round" stroke-linejoin="round"/>';
+    } else if (validMapped.length === 1) {
+      c += '<circle cx="' + validMapped[0].x + '" cy="' + validMapped[0].y + '" '
+         + 'r="4" fill="#ff2d55"/>';
+    }
+
+    validMapped.forEach(function (p) {
+      c += '<circle class="chart-dot" cx="' + p.x + '" cy="' + p.y + '" '
+         + 'r="3" fill="#fff" stroke="#ff2d55" stroke-width="2"/>';
+    });
+
+    mapped.forEach(function (p) {
+      if (p.y === null) return;
+      c += '<rect class="chart-hover" '
+         + 'x="' + (p.x - stepX / 2) + '" y="0" '
+         + 'width="' + stepX + '" height="' + H + '" '
+         + 'fill="transparent" '
+         + 'data-label="' + p.label + '" '
+         + 'data-value="' + p.value.toFixed(1) + '" '
+         + 'data-y="' + p.y + '"/>';
+    });
+
+    svg.innerHTML = c;
+
+    renderXLabels(mapped);
+    renderCompare();
+    renderRecords();
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-011', e.message || 'renderChart failed', '');
+    }
   }
-
-  validMapped.forEach(function (p) {
-    c += '<circle class="chart-dot" cx="' + p.x + '" cy="' + p.y + '" '
-       + 'r="3" fill="#fff" stroke="#ff2d55" stroke-width="2"/>';
-  });
-
-  mapped.forEach(function (p) {
-    if (p.y === null) return;
-    c += '<rect class="chart-hover" '
-       + 'x="' + (p.x - stepX / 2) + '" y="0" '
-       + 'width="' + stepX + '" height="' + H + '" '
-       + 'fill="transparent" '
-       + 'data-label="' + p.label + '" '
-       + 'data-value="' + p.value.toFixed(1) + '" '
-       + 'data-y="' + p.y + '"/>';
-  });
-
-  svg.innerHTML = c;
-
-  renderXLabels(mapped);
-  renderCompare();
-  renderRecords();
 }
 
 function renderDelta(validPoints) {
@@ -774,7 +826,7 @@ function onChartHover(el) {
     tooltip.style.left = (x * scaleX + (svgRect.left - rect.left)) + 'px';
     tooltip.style.top = (y * scaleY + (svgRect.top - rect.top)) + 'px';
     tooltip.classList.add('show');
-  } catch (e) { /* игнорируем */ }
+  } catch (e) {}
 }
 
 function hideChartTooltip() {
@@ -784,34 +836,37 @@ function hideChartTooltip() {
 
 
 /* ============================================================
-   ДИНАМИКА — СРАВНЕНИЕ ТЫ / ПАРТНЁР
+   ДИНАМИКА — СРАВНЕНИЕ
    ============================================================ */
+
 function renderCompare() {
-  const stats = getPeriodStats(APP.currentPeriod);
+  try {
+    const stats = getPeriodStats(APP.currentPeriod);
 
-  const youEl = $('compareYouVal');
-  if (youEl) {
-    youEl.textContent = stats.iHide
-      ? '•••'
-      : (stats.youValues.length ? stats.youAvg.toFixed(1) : '—');
-  }
-
-  const partnerRow = $('comparePartner');
-  const partnerValEl = $('comparePartnerVal');
-  if (partnerRow && partnerValEl) {
-    if (stats.partnerHide) {
-      partnerRow.classList.add('compare-blur');
-      partnerValEl.textContent = stats.partnerValues.length ? '•••' : '—';
-    } else {
-      partnerRow.classList.remove('compare-blur');
-      partnerValEl.textContent = stats.partnerValues.length
-        ? stats.partnerAvg.toFixed(1)
-        : '—';
+    const youEl = $('compareYouVal');
+    if (youEl) {
+      youEl.textContent = stats.iHide
+        ? '•••'
+        : (stats.youValues.length ? stats.youAvg.toFixed(1) : '—');
     }
-  }
 
-  drawSparkline('sparkYou', stats.iHide ? [] : stats.youValues, '#ff2d55');
-  drawSparkline('sparkPartner', stats.partnerHide ? [] : stats.partnerValues, '#5e7dff');
+    const partnerRow = $('comparePartner');
+    const partnerValEl = $('comparePartnerVal');
+    if (partnerRow && partnerValEl) {
+      if (stats.partnerHide) {
+        partnerRow.classList.add('compare-blur');
+        partnerValEl.textContent = stats.partnerValues.length ? '•••' : '—';
+      } else {
+        partnerRow.classList.remove('compare-blur');
+        partnerValEl.textContent = stats.partnerValues.length
+          ? stats.partnerAvg.toFixed(1)
+          : '—';
+      }
+    }
+
+    drawSparkline('sparkYou', stats.iHide ? [] : stats.youValues, '#ff2d55');
+    drawSparkline('sparkPartner', stats.partnerHide ? [] : stats.partnerValues, '#5e7dff');
+  } catch (e) {}
 }
 
 function drawSparkline(id, vals, color) {
@@ -845,25 +900,28 @@ function drawSparkline(id, vals, color) {
 /* ============================================================
    ДИНАМИКА — РЕКОРДЫ
    ============================================================ */
+
 function renderRecords() {
-  const rec = computeRecords();
+  try {
+    const rec = computeRecords();
 
-  const bestDayEl = $('bestDay');
-  if (bestDayEl) {
-    bestDayEl.textContent = rec.bestDate
-      ? formatShortDate(rec.bestDate) + ' (' + rec.bestValue.toFixed(1) + ')'
-      : '—';
-  }
+    const bestDayEl = $('bestDay');
+    if (bestDayEl) {
+      bestDayEl.textContent = rec.bestDate
+        ? formatShortDate(rec.bestDate) + ' (' + rec.bestValue.toFixed(1) + ')'
+        : '—';
+    }
 
-  const worstDayEl = $('worstDay');
-  if (worstDayEl) {
-    worstDayEl.textContent = rec.worstDate
-      ? formatShortDate(rec.worstDate) + ' (' + rec.worstValue.toFixed(1) + ')'
-      : '—';
-  }
+    const worstDayEl = $('worstDay');
+    if (worstDayEl) {
+      worstDayEl.textContent = rec.worstDate
+        ? formatShortDate(rec.worstDate) + ' (' + rec.worstValue.toFixed(1) + ')'
+        : '—';
+    }
 
-  const longestFiveEl = $('longestFive');
-  if (longestFiveEl) longestFiveEl.textContent = rec.longestFive + ' дн.';
+    const longestFiveEl = $('longestFive');
+    if (longestFiveEl) longestFiveEl.textContent = rec.longestFive + ' дн.';
+  } catch (e) {}
 }
 
 function formatShortDate(key) {
@@ -876,9 +934,10 @@ function formatShortDate(key) {
 /* ============================================================
    ОБЩАЯ ПЕРЕРИСОВКА ГЛАВНОЙ
    ============================================================ */
+
 function renderAll() {
   try {
-    updateHeart(true);
+    updateHeart();
     renderVoteButtons();
     renderCoupleState();
 
@@ -890,5 +949,9 @@ function renderAll() {
 
     const nbv = $('namesBtnValue');
     if (nbv) nbv.textContent = APP.state.names;
-  } catch (e) { /* игнорируем */ }
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-004', e.message || 'renderAll failed', '');
+    }
+  }
 }
