@@ -4,25 +4,22 @@
    Файл полностью опционален. Если в js/config.js ключи пустые,
    всё работает вхолостую.
 
-   Что синхронизируется:
-   - голоса (таблица votes)
-   - имена партнёров (couples.name_you, couples.name_partner)
-   - дата старта (couples.start_date)
-   - флаги скрытия оценок (couples.hide_you, couples.hide_partner)
+   Синхронизируется:
+   - голоса (votes)
+   - имена партнёров (name_you, name_partner)
+   - дата старта (start_date)
+   - флаги скрытия (hide_you, hide_partner)
 
-   Про имена:
-   - name_you     — имя того, кто создал пару (роль 'you')
-   - name_partner — имя того, кто подключился (роль 'partner')
+   Про роли:
+   - 'you'     — первый, кто создал пару
+   - 'partner' — второй, кто подключился
 
-   Каждое устройство пишет в СВОЙ столбец:
-   - если myRole='you'     → пишу в name_you
-   - если myRole='partner' → пишу в name_partner
-
-   При чтении берётся ЧУЖОЙ столбец и кладётся в state.partnerName.
+   determineMyRole — асинхронная, опирается на сервер:
+   смотрит, какие слоты имён свободны, и занимает нужный.
    ============================================================ */
 
 /* ============================================================
-   КЛЮЧИ СТОЛБЦОВ ДЛЯ МОЕГО/ЧУЖОГО
+   КЛЮЧИ СТОЛБЦОВ
    ============================================================ */
 function myHideColumn() {
   return APP.myRole === 'you' ? 'hide_you' : 'hide_partner';
@@ -65,6 +62,73 @@ function initSupabaseAsync() {
 }
 
 /* ============================================================
+   ОПРЕДЕЛЕНИЕ МОЕЙ РОЛИ — АСИНХРОННО
+   ============================================================
+   Логика:
+   1. Если есть метка creator_of_<code>:
+      - совпадает с моим myId → 'you'
+      - не совпадает → 'partner'
+   2. Если метки нет — спрашиваем сервер:
+      - name_you пустой, name_partner пустой → я 'you' (первый)
+      - name_you занят, name_partner пустой → я 'partner'
+      - name_you пустой, name_partner занят → я 'you'
+      - оба заняты → fallback 'partner'
+   3. Сервер недоступен → fallback 'you'.
+   ============================================================ */
+async function determineMyRole(code) {
+  /* Случай 1: локальная метка */
+  const creator = storageGet(CONFIG.STORAGE.creator + code);
+
+  if (creator && creator === APP.myId) {
+    APP.myRole = 'you';
+    return;
+  }
+  if (creator && creator !== APP.myId && creator !== 'other-device') {
+    APP.myRole = 'partner';
+    return;
+  }
+
+  /* Случай 2: спрашиваем сервер */
+  if (APP.supabaseClient) {
+    try {
+      const res = await APP.supabaseClient
+        .from('couples')
+        .select('name_you, name_partner')
+        .eq('id', code)
+        .maybeSingle();
+
+      if (res.data) {
+        const hasYou = !!(res.data.name_you && String(res.data.name_you).trim());
+        const hasPartner = !!(res.data.name_partner && String(res.data.name_partner).trim());
+
+        if (hasYou && !hasPartner) {
+          APP.myRole = 'partner';
+          storageSet(CONFIG.STORAGE.creator + code, 'other-device');
+          return;
+        }
+        if (!hasYou && hasPartner) {
+          APP.myRole = 'you';
+          storageSet(CONFIG.STORAGE.creator + code, APP.myId);
+          return;
+        }
+        if (!hasYou && !hasPartner) {
+          /* Оба свободны — я первый */
+          APP.myRole = 'you';
+          storageSet(CONFIG.STORAGE.creator + code, APP.myId);
+          return;
+        }
+        /* Оба заняты — fallback */
+        APP.myRole = 'partner';
+        return;
+      }
+    } catch (e) { /* идём в fallback */ }
+  }
+
+  /* Случай 3: нет ни метки, ни сервера */
+  APP.myRole = 'you';
+}
+
+/* ============================================================
    ЗАГРУЗКА ДАННЫХ ПАРЫ
    ============================================================ */
 async function loadFromSupabase() {
@@ -81,26 +145,17 @@ async function loadFromSupabase() {
 
     const couple = coupleRes.data;
 
-    /* --- Имена ---
-       Читаем СВОЙ столбец в myName (на случай переустановки),
-       ЧУЖОЙ столбец в partnerName. */
     const myNameCol = myNameColumn();
     const partnerNameCol = partnerNameColumn();
 
     const serverMyName = couple[myNameCol];
     const serverPartnerName = couple[partnerNameCol];
 
-    if (serverMyName) {
-      APP.state.myName = serverMyName;
-    }
-    if (serverPartnerName) {
-      APP.state.partnerName = serverPartnerName;
-    }
+    if (serverMyName) APP.state.myName = serverMyName;
+    if (serverPartnerName) APP.state.partnerName = serverPartnerName;
 
-    /* --- Метаданные --- */
     APP.state.startDate = couple.start_date || APP.state.startDate;
 
-    /* --- Флаги скрытия --- */
     const partnerCol = partnerHideColumn();
     APP.state.partnerHideFlag = !!couple[partnerCol];
 
@@ -110,7 +165,7 @@ async function loadFromSupabase() {
       APP.state.hideMyVotes = serverMyFlag;
     }
 
-    /* --- Голоса --- */
+    /* Голоса */
     const votesRes = await APP.supabaseClient
       .from('votes')
       .select('*')
@@ -163,9 +218,6 @@ async function pushVoteToSupabase(date, role, value) {
 
 /* ============================================================
    ОБНОВЛЕНИЕ МЕТАДАННЫХ ПАРЫ
-   ============================================================
-   Отправляем: своё имя, дату старта, свой флаг скрытия.
-   Чужие столбцы не трогаем.
    ============================================================ */
 async function pushCoupleMeta() {
   if (!APP.supabaseClient || !APP.coupleId) return false;
@@ -195,9 +247,6 @@ async function pushCoupleMeta() {
 
 /* ============================================================
    ОБНОВЛЕНИЕ ТОЛЬКО МОЕГО ИМЕНИ
-   ============================================================
-   Отдельная функция для редактора имён, чтобы не перезаписать
-   чужие поля (например, партнёр параллельно меняет свой флаг).
    ============================================================ */
 async function pushMyName() {
   if (!APP.supabaseClient || !APP.coupleId) return false;
@@ -245,27 +294,22 @@ async function pushMyHideFlag() {
 /* ============================================================
    СОЗДАНИЕ ПАРЫ
    ============================================================
-   Оба столбца имён и флагов создаются пустыми.
-   Партнёр 'you' сразу записывает своё имя.
+   Роль 'you' на этом этапе уже установлена в ui.js
+   (мы пишем APP.myRole = 'you' перед вызовом).
+   Заполняем name_you своим именем, name_partner оставляем пустым.
    ============================================================ */
 async function createCoupleInSupabase(code) {
   if (!APP.supabaseClient) return false;
 
   try {
-    const myNameCol = myNameColumn();
-    const myCol = myHideColumn();
-
     const payload = {
       id: code,
       start_date: APP.state.startDate,
       hide_you: false,
       hide_partner: false,
-      name_you: '',
+      name_you: getMyName(),
       name_partner: ''
     };
-
-    payload[myNameCol] = getMyName();
-    payload[myCol] = !!APP.state.hideMyVotes;
 
     const res = await APP.supabaseClient
       .from('couples')
@@ -297,7 +341,7 @@ async function checkCoupleExists(code) {
 }
 
 /* ============================================================
-   ЗАЛИВКА ЛОКАЛЬНЫХ ГОЛОСОВ НА СЕРВЕР
+   ЗАЛИВКА ЛОКАЛЬНЫХ ГОЛОСОВ
    ============================================================ */
 async function syncAllLocalVotesToSupabase() {
   if (!APP.supabaseClient || !APP.coupleId) return;
@@ -398,7 +442,6 @@ function handleRealtimeVote(payload) {
       renderChart();
     }
 
-    /* Toast — только если партнёр не скрыл оценки */
     const partnerRole = APP.myRole === 'you' ? 'partner' : 'you';
     if (role === partnerRole && !getPartnerHideFlag()) {
       if (typeof showToast === 'function') {
@@ -416,7 +459,6 @@ function handleRealtimeCouple(payload) {
 
     let changed = false;
 
-    /* Имя партнёра — из чужого столбца */
     const partnerNameCol = partnerNameColumn();
     const newPartnerName = row[partnerNameCol];
     if (newPartnerName && newPartnerName !== APP.state.partnerName) {
@@ -427,7 +469,6 @@ function handleRealtimeCouple(payload) {
       }
     }
 
-    /* Моё имя — из своего столбца (на случай смены на другом устройстве) */
     const myNameCol = myNameColumn();
     const newMyName = row[myNameCol];
     if (newMyName && newMyName !== APP.state.myName) {
@@ -435,12 +476,10 @@ function handleRealtimeCouple(payload) {
       changed = true;
     }
 
-    /* Дата старта */
     if (row.start_date) {
       APP.state.startDate = row.start_date;
     }
 
-    /* Флаги скрытия */
     const partnerCol = partnerHideColumn();
     const newPartnerHide = !!row[partnerCol];
     if (newPartnerHide !== APP.state.partnerHideFlag) {
@@ -476,30 +515,4 @@ function unsubscribeRealtime() {
   } catch (e) { /* игнорируем */ }
 
   APP.realtimeChannel = null;
-}
-
-/* ============================================================
-   ОПРЕДЕЛЕНИЕ МОЕЙ РОЛИ В ПАРЕ
-   ============================================================
-   ВАЖНО: должна быть определена ДО первого вызова
-   myNameColumn() / partnerNameColumn() / loadFromSupabase().
-   ============================================================ */
-function determineMyRole(code) {
-  const creator = storageGet(CONFIG.STORAGE.creator + code);
-
-  /* Случай 1: это устройство создавало пару — роль 'you' */
-  if (creator && creator === APP.myId) {
-    APP.myRole = 'you';
-    return;
-  }
-
-  /* Случай 2: сохранённый creator — чужой ID, значит я 'partner' */
-  if (creator && creator !== APP.myId && creator !== 'other-device') {
-    APP.myRole = 'partner';
-    return;
-  }
-
-  /* Случай 3: смотрим на состояние пары НА СЕРВЕРЕ, а не локально.
-     Функция станет async — вызывающий код уже её await'ит. */
-  APP.myRole = 'you'; /* временно, перезапишем ниже */
 }
