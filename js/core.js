@@ -1,3 +1,7 @@
+/* ============================================================
+   CORE — состояние, даты, математика, расчёты для экранов
+   ============================================================ */
+
 const APP = {
   state: null,
   myId: null,
@@ -12,21 +16,46 @@ const APP = {
   supabaseLoading: null
 };
 
+/* ---------- DOM ---------- */
+
 function $(id) {
   return document.getElementById(id);
 }
 
+/* ---------- ЧИСЛА ---------- */
+
 function pad(n) {
   return n < 10 ? '0' + n : '' + n;
 }
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function avg(arr) {
+  if (!arr || !arr.length) return 0;
+  let sum = 0;
+  for (let i = 0; i < arr.length; i++) sum += arr[i];
+  return sum / arr.length;
+}
+
+/* ---------- ДАТЫ (только локальное время) ---------- */
 
 function fmtDate(d) {
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 }
 
 function parseDate(s) {
-  const parts = s.split('-').map(Number);
-  return new Date(parts[0], parts[1] - 1, parts[2]);
+  try {
+    if (typeof s !== 'string' || s.length < 10) return new Date();
+    const parts = s.split('-').map(Number);
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  } catch (e) {
+    if (typeof LM !== 'undefined') {
+      LM.record('LM-001', 'parseDate failed', 'input=' + s);
+    }
+    return new Date();
+  }
 }
 
 function todayStr() {
@@ -34,29 +63,21 @@ function todayStr() {
 }
 
 function daysBetween(a, b) {
+  if (!(a instanceof Date) || !(b instanceof Date)) return 0;
   return Math.round((b - a) / 86400000);
 }
 
 const MONTHS_FULL = [
-  'Январь','Февраль','Март','Апрель','Май','Июнь',
-  'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'
+  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
 ];
 
 const MONTHS_GENITIVE = [
-  'января','февраля','марта','апреля','мая','июня',
-  'июля','августа','сентября','октября','ноября','декабря'
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
 ];
 
-function clamp(v, min, max) {
-  return Math.max(min, Math.min(max, v));
-}
-
-function avg(arr) {
-  if (!arr.length) return 0;
-  let sum = 0;
-  for (let i = 0; i < arr.length; i++) sum += arr[i];
-  return sum / arr.length;
-}
+/* ---------- UUID ---------- */
 
 function uuid() {
   try {
@@ -78,6 +99,8 @@ function uuid() {
     return 'fallback-' + Date.now() + '-' + Math.random().toString(36).substring(2, 10);
   }
 }
+
+/* ---------- LOCALSTORAGE ---------- */
 
 function storageGet(key) {
   try { return localStorage.getItem(key); } catch (e) { return null; }
@@ -154,11 +177,11 @@ function saveState() {
 /* ---------- ИМЕНА ---------- */
 
 function getMyName() {
-  return APP.state.myName || CONFIG.DEFAULTS.myName;
+  return (APP.state && APP.state.myName) || CONFIG.DEFAULTS.myName;
 }
 
 function getPartnerName() {
-  return APP.state.partnerName || CONFIG.DEFAULTS.partnerName;
+  return (APP.state && APP.state.partnerName) || CONFIG.DEFAULTS.partnerName;
 }
 
 function setMyName(name) {
@@ -172,11 +195,11 @@ function setMyName(name) {
 /* ---------- ПОЛ ---------- */
 
 function getMyGender() {
-  return APP.state.myGender || '';
+  return (APP.state && APP.state.myGender) || '';
 }
 
 function getPartnerGender() {
-  return APP.state.partnerGender || '';
+  return (APP.state && APP.state.partnerGender) || '';
 }
 
 function setMyGender(g) {
@@ -206,7 +229,7 @@ function getPartnerVerb() {
   return (g && CONFIG.GENDERS[g]) ? CONFIG.GENDERS[g].verb : 'поставил(а)';
 }
 
-/* ---------- МАТЕМАТИКА ---------- */
+/* ---------- МАТЕМАТИКА ПО ВРЕМЕНИ ---------- */
 
 function computeStreak(votes) {
   let streak = 0;
@@ -251,6 +274,7 @@ function getPartnerHideFlag() {
 }
 
 /* ---------- РАСЧЁТЫ ДЛЯ ЭКРАНОВ ---------- */
+
 function computePartnerPercent() {
   const result = {
     percent: 0,
