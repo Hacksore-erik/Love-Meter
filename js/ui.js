@@ -1,69 +1,40 @@
-/* ============================================================
-   UI — интерфейсные функции и обработчики
-   ============================================================ */
-
-/* ============================================================
-   TOAST
-   ============================================================ */
 let toastTimer = null;
 
 function showToast(msg, duration) {
   try {
     const toast = $('toast');
     if (!toast) return;
-
     duration = duration || 2200;
     toast.textContent = msg;
     toast.classList.add('show');
-
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () {
       toast.classList.remove('show');
     }, duration);
-  } catch (e) { /* игнорируем */ }
+  } catch (e) {}
 }
 
-/* ============================================================
-   SYNC-ИНДИКАТОР
-   ============================================================ */
 function updateSyncDot(status) {
   const dot = $('syncDot');
   if (!dot) return;
-
   dot.className = 'sync-dot';
-
-  if (status === 'on') {
-    dot.classList.add('on');
-    dot.title = 'Синхронизировано';
-  } else if (status === 'off') {
-    dot.classList.add('off');
-    dot.title = 'Нет связи';
-  } else {
-    dot.classList.add('local');
-    dot.title = 'Локальный режим';
-  }
+  if (status === 'on') { dot.classList.add('on'); dot.title = 'Синхронизировано'; }
+  else if (status === 'off') { dot.classList.add('off'); dot.title = 'Нет связи'; }
+  else { dot.classList.add('local'); dot.title = 'Локальный режим'; }
 }
 
-/* ============================================================
-   НАВИГАЦИЯ
-   ============================================================ */
 function switchTab(tab) {
   try {
     document.querySelectorAll('.screen').forEach(function (s) {
       s.classList.toggle('active', s.dataset.screen === tab);
     });
-
     document.querySelectorAll('.tab-item').forEach(function (t) {
       t.classList.toggle('active', t.dataset.tab === tab);
     });
-
     if (tab === 'awards') renderAchievements();
     if (tab === 'calendar') renderCalendar();
     if (tab === 'chart') renderChart();
-    if (tab === 'profile') {
-      renderProfile();
-      updateErrorLogCount();
-    }
+    if (tab === 'profile') { renderProfile(); updateErrorLogCount(); }
   } catch (e) {
     if (typeof LM !== 'undefined') {
       LM.record('LM-029', e.message || 'Ошибка switchTab', 'tab=' + tab);
@@ -76,21 +47,21 @@ function isScreenActive(name) {
   return !!(s && s.classList.contains('active'));
 }
 
-/* ============================================================
-   ПРОФИЛЬ
-   ============================================================ */
+/* ---------- ПРОФИЛЬ ---------- */
+
 function renderProfile() {
   const pn = $('profileNames');
-  if (pn) {
-    pn.textContent = buildCoupleTitle();
-  }
+  if (pn) pn.textContent = buildCoupleTitle();
 
-  const start = parseDate(APP.state.startDate);
-  const days = daysBetween(start, new Date()) + 1;
+  const days = daysBetween(parseDate(APP.state.startDate), new Date()) + 1;
   const sub = $('profileSub');
-  if (sub) {
-    sub.textContent = 'Вместе • ' + days + ' дней в Love Meter';
-  }
+  if (sub) sub.textContent = 'Вместе • ' + days + ' дней в Love Meter';
+
+  const youEmoji = $('profileYouIcon');
+  if (youEmoji) youEmoji.textContent = getMyGenderEmoji();
+
+  const partnerEmoji = $('profilePartnerIcon');
+  if (partnerEmoji) partnerEmoji.textContent = getPartnerGenderEmoji();
 
   const youEl = $('profileYouName');
   if (youEl) youEl.textContent = getMyName();
@@ -99,38 +70,26 @@ function renderProfile() {
   if (partnerEl) partnerEl.textContent = getPartnerName();
 
   const pv = $('privacyValue');
-  if (pv) {
-    pv.textContent = APP.state.hideMyVotes ? 'Скрыто' : 'Открыто';
-  }
+  if (pv) pv.textContent = APP.state.hideMyVotes ? 'Скрыто' : 'Открыто';
 
   const cb = $('coupleBtnValue');
-  if (cb) {
-    cb.textContent = APP.coupleId ? 'Код: ' + APP.coupleId : 'Не подключена';
-  }
+  if (cb) cb.textContent = APP.coupleId ? 'Код: ' + APP.coupleId : 'Не подключена';
 }
 
 function buildCoupleTitle() {
   const you = getMyName();
   const partner = getPartnerName();
-
   const youDefault = you === CONFIG.DEFAULTS.myName;
   const partnerDefault = partner === CONFIG.DEFAULTS.partnerName;
 
-  if (youDefault && partnerDefault) {
-    return CONFIG.DEFAULTS.names;
-  }
-  if (partnerDefault) {
-    return you;
-  }
-  if (youDefault) {
-    return partner;
-  }
+  if (youDefault && partnerDefault) return CONFIG.DEFAULTS.names;
+  if (partnerDefault) return you;
+  if (youDefault) return partner;
   return you + ' & ' + partner;
 }
 
-/* ============================================================
-   МОДАЛКА
-   ============================================================ */
+/* ---------- МОДАЛКА ---------- */
+
 function openModal(htmlContent) {
   try {
     const modal = $('coupleModal');
@@ -157,9 +116,8 @@ function closeModal() {
   if (modal) modal.classList.remove('show');
 }
 
-/* ============================================================
-   МОДАЛКА — ПАРА
-   ============================================================ */
+/* ---------- МОДАЛКА ПАРЫ ---------- */
+
 function openCoupleModal() {
   if (APP.coupleId) {
     openModal(
@@ -179,9 +137,7 @@ function openCoupleModal() {
   if (!HAS_SUPABASE) {
     openModal(
       '<h3>Одиночный режим</h3>' +
-      '<p>Приложение работает локально на этом устройстве. ' +
-      'Чтобы синхронизироваться с партнёром, добавьте ключи Supabase ' +
-      'в файл <b>js/config.js</b>.</p>' +
+      '<p>Приложение работает локально. Чтобы синхронизироваться с партнёром, добавьте ключи Supabase в js/config.js.</p>' +
       '<button type="button" class="modal-btn primary" data-action="close">Понятно</button>'
     );
     return;
@@ -199,10 +155,7 @@ function openCoupleModal() {
 }
 
 async function onCoupleModalAction(action) {
-  if (action === 'close') {
-    closeModal();
-    return;
-  }
+  if (action === 'close') { closeModal(); return; }
 
   if (action === 'copy-code') {
     try {
@@ -213,9 +166,6 @@ async function onCoupleModalAction(action) {
         showToast('Код: ' + APP.coupleId, 4000);
       }
     } catch (e) {
-      if (typeof LM !== 'undefined') {
-        LM.record('LM-030', e.message || 'Ошибка clipboard', 'copy-code');
-      }
       showToast('Код: ' + APP.coupleId, 4000);
     }
     return;
@@ -223,18 +173,13 @@ async function onCoupleModalAction(action) {
 
   if (action === 'disconnect') {
     if (!confirm('Отключить пару? Локальные данные сохранятся.')) return;
-
     const oldCode = APP.coupleId;
-
     storageRemove(CONFIG.STORAGE.couple);
-    if (oldCode) {
-      storageRemove(CONFIG.STORAGE.creator + oldCode);
-    }
-
+    if (oldCode) storageRemove(CONFIG.STORAGE.creator + oldCode);
     APP.coupleId = null;
     APP.state.partnerHideFlag = false;
     APP.state.partnerName = CONFIG.DEFAULTS.partnerName;
-
+    APP.state.partnerGender = '';
     unsubscribeRealtime();
     updateSyncDot('local');
     closeModal();
@@ -251,8 +196,6 @@ async function onCoupleModalAction(action) {
       return;
     }
 
-    /* Роль 'you' — ДО createCoupleInSupabase,
-       чтобы имя писалась в правильный столбец */
     APP.myRole = 'you';
 
     const code = generateCoupleCode();
@@ -295,9 +238,6 @@ async function onCoupleModalAction(action) {
 
     const exists = await checkCoupleExists(code);
     if (!exists) {
-      if (typeof LM !== 'undefined') {
-        LM.record('LM-021', 'Пара не найдена на сервере', 'code=' + code);
-      }
       showToast('Пара с таким кодом не найдена');
       return;
     }
@@ -305,12 +245,8 @@ async function onCoupleModalAction(action) {
     APP.coupleId = code;
     storageSet(CONFIG.STORAGE.couple, code);
 
-    /* determineMyRole теперь асинхронная */
     await determineMyRole(code);
-
     await loadFromSupabase();
-
-    /* Пишем своё имя в свой столбец на сервере */
     await pushMyName();
 
     subscribeRealtime();
@@ -327,73 +263,82 @@ async function onCoupleModalAction(action) {
 function generateCoupleCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let s = '';
-  for (let i = 0; i < 6; i++) {
-    s += chars[Math.floor(Math.random() * chars.length)];
-  }
+  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return s;
 }
 
-/* ============================================================
-   МОДАЛКА — ИМЕНА
-   ============================================================ */
-function openNamesModal() {
+/* ---------- МОДАЛКА «МОЁ ИМЯ» ---------- */
+
+function openMyNameModal() {
+  const myGender = getMyGender();
+  const canSave = myGender === 'f' || myGender === 'm';
+
   openModal(
-    '<h3>Имена</h3>' +
-    '<p>Как тебя зовут и как зовут партнёра? Имена видны только внутри пары.</p>' +
+    '<h3>Как тебя зовут?</h3>' +
+    '<p>Это увидят только вы вдвоём. Имя партнёра подтянется автоматически.</p>' +
     '<input type="text" id="myNameInput" placeholder="Твоё имя" maxlength="30" ' +
       'autocomplete="off" value="' + escapeHtml(getMyName()) + '">' +
-    '<input type="text" id="partnerNameInput" placeholder="Имя партнёра" maxlength="30" ' +
-      'autocomplete="off" value="' + escapeHtml(getPartnerName()) + '">' +
-    '<button type="button" class="modal-btn primary" data-action="save-names">Сохранить</button>' +
+    '<div class="gender-label">Твой пол</div>' +
+    '<div class="gender-select" id="genderSelect">' +
+      '<button type="button" class="gender-btn' + (myGender === 'f' ? ' active' : '') + '" data-gender="f">' +
+        '<span class="gender-emoji">👩</span>' +
+        '<span class="gender-text">Она</span>' +
+      '</button>' +
+      '<button type="button" class="gender-btn' + (myGender === 'm' ? ' active' : '') + '" data-gender="m">' +
+        '<span class="gender-emoji">👨</span>' +
+        '<span class="gender-text">Он</span>' +
+      '</button>' +
+    '</div>' +
+    '<button type="button" class="modal-btn primary" data-action="save-my-name" id="saveMyNameBtn"' +
+      (canSave ? '' : ' disabled') + '>Сохранить</button>' +
     '<button type="button" class="modal-btn secondary" data-action="close">Отмена</button>'
   );
 
   setTimeout(function () {
     const inp = $('myNameInput');
-    if (inp) {
-      inp.focus();
-      inp.select();
-    }
+    if (inp) { inp.focus(); inp.select(); }
   }, 150);
 }
 
-async function onNamesModalAction(action) {
-  if (action === 'close') {
-    closeModal();
-    return;
-  }
+function onGenderBtnClick(gender) {
+  if (gender !== 'f' && gender !== 'm') return;
 
-  if (action === 'save-names') {
-    const myInp = $('myNameInput');
-    const partnerInp = $('partnerNameInput');
+  document.querySelectorAll('.gender-btn').forEach(function (b) {
+    b.classList.toggle('active', b.dataset.gender === gender);
+  });
 
-    const myVal = (myInp ? myInp.value : '').trim();
-    const partnerVal = (partnerInp ? partnerInp.value : '').trim();
+  const btn = $('saveMyNameBtn');
+  if (btn) btn.disabled = false;
+}
 
-    if (!myVal) {
-      showToast('Введи своё имя');
+async function onMyNameModalAction(action) {
+  if (action === 'close') { closeModal(); return; }
+
+  if (action === 'save-my-name') {
+    const inp = $('myNameInput');
+    const val = (inp ? inp.value : '').trim();
+
+    if (!val) { showToast('Введи своё имя'); return; }
+
+    const activeGenderBtn = document.querySelector('.gender-btn.active');
+    const gender = activeGenderBtn ? activeGenderBtn.dataset.gender : '';
+
+    if (gender !== 'f' && gender !== 'm') {
+      showToast('Выбери пол');
       return;
     }
 
-    setMyName(myVal);
-    if (partnerVal) {
-      setPartnerName(partnerVal);
-    }
+    setMyName(val);
+    setMyGender(gender);
 
     if (APP.supabaseClient && APP.coupleId) {
-      try {
-        await pushMyName();
-      } catch (e) {
-        if (typeof LM !== 'undefined') {
-          LM.record('LM-022', e.message || 'Ошибка pushMyName', 'name=' + myVal);
-        }
-      }
+      try { await pushMyName(); } catch (e) {}
     }
 
     closeModal();
     renderProfile();
     renderAll();
-    showToast('Имена сохранены 💕');
+    showToast('Сохранено 💕');
     return;
   }
 }
@@ -407,9 +352,8 @@ function escapeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
-/* ============================================================
-   МОДАЛКА — ИНФО
-   ============================================================ */
+/* ---------- ИНФО ---------- */
+
 function openAboutModal() {
   const mode = HAS_SUPABASE
     ? (APP.coupleId ? 'с синхронизацией' : 'локальный, Supabase доступен')
@@ -417,17 +361,14 @@ function openAboutModal() {
 
   openModal(
     '<h3>Love Meter</h3>' +
-    '<p>Трекер эмоционального состояния пары.<br>' +
-    'Версия 1.2 • Режим: ' + mode + '</p>' +
-    '<p style="font-size:12px;margin-bottom:20px;">Данные хранятся в браузере. ' +
-    'Никаких аккаунтов, аналитики и рекламы.</p>' +
+    '<p>Трекер эмоционального состояния пары.<br>Версия 1.3 • Режим: ' + mode + '</p>' +
+    '<p style="font-size:12px;margin-bottom:20px;">Данные хранятся в браузере.</p>' +
     '<button type="button" class="modal-btn primary" data-action="close">Закрыть</button>'
   );
 }
 
-/* ============================================================
-   ПРИВАТНОСТЬ
-   ============================================================ */
+/* ---------- ПРИВАТНОСТЬ ---------- */
+
 async function togglePrivacy() {
   try {
     APP.state.hideMyVotes = !APP.state.hideMyVotes;
@@ -435,77 +376,50 @@ async function togglePrivacy() {
 
     if (APP.supabaseClient && APP.coupleId) {
       const ok = await pushMyHideFlag();
-      if (!ok) {
-        showToast('Сохранено локально, синхронизируется позже ⏳');
-      } else {
-        showToast(APP.state.hideMyVotes
-          ? 'Твои оценки скрыты от партнёра 🔒'
-          : 'Твои оценки видны партнёру 👀');
-      }
+      if (!ok) showToast('Сохранено локально ⏳');
+      else showToast(APP.state.hideMyVotes ? 'Оценки скрыты 🔒' : 'Оценки видны 👀');
     } else {
-      showToast(APP.state.hideMyVotes
-        ? 'Оценки скрыты 🔒'
-        : 'Оценки видны 👀');
+      showToast(APP.state.hideMyVotes ? 'Оценки скрыты 🔒' : 'Оценки видны 👀');
     }
 
     renderProfile();
     renderAll();
     if (isScreenActive('chart')) renderChart();
-  } catch (e) {
-    if (typeof LM !== 'undefined') {
-      LM.record('LM-023', e.message || 'Ошибка togglePrivacy');
-    }
-  }
+  } catch (e) {}
 }
 
-/* ============================================================
-   СБРОС ДАННЫХ
-   ============================================================ */
+/* ---------- СБРОС ---------- */
+
 function resetAllData() {
   if (!confirm('Сбросить ВСЕ данные приложения? Это необратимо.')) return;
-
   storageRemove(CONFIG.STORAGE.state);
   storageRemove(CONFIG.STORAGE.couple);
-
   location.reload();
 }
 
-/* ============================================================
-   ПЕРИОД БЛОКА ПАРЫ
-   ============================================================ */
 function onCoupleStatePeriodClick(period) {
   if (period !== 'week' && period !== 'month') return;
-
   APP.coupleStatePeriod = period;
   storageSet(CONFIG.STORAGE.coupleStatePeriod, period);
-
   renderCoupleState();
 }
 
-/* ============================================================
-   ЭКСПОРТ PDF
-   ============================================================ */
+/* ---------- PDF ---------- */
+
 let html2pdfLoading = null;
 
 function ensureHtml2Pdf() {
-  if (typeof window.html2pdf !== 'undefined') {
-    return Promise.resolve(window.html2pdf);
-  }
+  if (typeof window.html2pdf !== 'undefined') return Promise.resolve(window.html2pdf);
   if (html2pdfLoading) return html2pdfLoading;
 
   html2pdfLoading = new Promise(function (resolve, reject) {
     const script = document.createElement('script');
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
     script.onload = function () {
-      if (typeof window.html2pdf !== 'undefined') {
-        resolve(window.html2pdf);
-      } else {
-        reject(new Error('html2pdf не определён после загрузки'));
-      }
+      if (typeof window.html2pdf !== 'undefined') resolve(window.html2pdf);
+      else reject(new Error('html2pdf не определён'));
     };
-    script.onerror = function () {
-      reject(new Error('Ошибка загрузки html2pdf'));
-    };
+    script.onerror = function () { reject(new Error('Ошибка загрузки html2pdf')); };
     document.head.appendChild(script);
   });
 
@@ -515,20 +429,16 @@ function ensureHtml2Pdf() {
 async function exportPDF() {
   showToast('Готовим PDF...');
 
-  try {
-    await ensureHtml2Pdf();
-  } catch (e) {
-    if (typeof LM !== 'undefined') {
-      LM.record('LM-015', e.message || 'Ошибка загрузки html2pdf');
-    }
+  try { await ensureHtml2Pdf(); }
+  catch (e) {
+    if (typeof LM !== 'undefined') LM.record('LM-015', e.message || 'Ошибка html2pdf');
     showToast('Не удалось загрузить библиотеку PDF');
     return;
   }
 
   try {
     const couple = computeCouplePercent('week');
-    const start = parseDate(APP.state.startDate);
-    const days = daysBetween(start, new Date()) + 1;
+    const days = daysBetween(parseDate(APP.state.startDate), new Date()) + 1;
 
     setText('pdfNames', buildCoupleTitle());
     setText('pdfDays', days + ' дней в Love Meter');
@@ -537,45 +447,32 @@ async function exportPDF() {
     setText('pdfStreak', APP.state.streak);
 
     const moments = collectMoments();
-    const pdfMoments = $('pdfMoments');
-    if (pdfMoments) {
-      pdfMoments.innerHTML = moments.map(function (m) {
-        return '<li>' + m + '</li>';
-      }).join('');
-    }
+    const pm = $('pdfMoments');
+    if (pm) pm.innerHTML = moments.map(function (m) { return '<li>' + m + '</li>'; }).join('');
 
     const unlocked = CONFIG.ACHIEVEMENTS.filter(function (a) {
       return getAchievementProgress(a) >= a.max;
     });
-    const pdfAch = $('pdfAchievements');
-    if (pdfAch) {
-      pdfAch.innerHTML = unlocked.length
-        ? unlocked.map(function (a) {
-            return '<div class="pdf-ach">' + a.emoji + ' ' + a.name + '</div>';
-          }).join('')
+    const pa = $('pdfAchievements');
+    if (pa) {
+      pa.innerHTML = unlocked.length
+        ? unlocked.map(function (a) { return '<div class="pdf-ach">' + a.emoji + ' ' + a.name + '</div>'; }).join('')
         : '<div class="pdf-ach">🌱 Первый шаг — в процессе</div>';
     }
 
     const pdfTemplate = $('pdfTemplate');
-    if (!pdfTemplate) {
-      showToast('Шаблон PDF не найден');
-      return;
-    }
+    if (!pdfTemplate) { showToast('Шаблон PDF не найден'); return; }
 
     pdfTemplate.classList.add('pdf-rendering');
     pdfTemplate.getBoundingClientRect();
 
     await new Promise(function (resolve) {
-      requestAnimationFrame(function () {
-        requestAnimationFrame(resolve);
-      });
+      requestAnimationFrame(function () { requestAnimationFrame(resolve); });
     });
-
-    const filename = 'love-meter-' + todayStr() + '.pdf';
 
     const opt = {
       margin: 0,
-      filename: filename,
+      filename: 'love-meter-' + todayStr() + '.pdf',
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: {
         scale: 2,
@@ -587,11 +484,7 @@ async function exportPDF() {
         scrollX: 0,
         scrollY: 0
       },
-      jsPDF: {
-        unit: 'px',
-        format: [794, 1123],
-        orientation: 'portrait'
-      }
+      jsPDF: { unit: 'px', format: [794, 1123], orientation: 'portrait' }
     };
 
     try {
@@ -601,9 +494,7 @@ async function exportPDF() {
       pdfTemplate.classList.remove('pdf-rendering');
     }
   } catch (e) {
-    if (typeof LM !== 'undefined') {
-      LM.record('LM-014', e.message || 'Ошибка html2pdf().save()', e.stack || '');
-    }
+    if (typeof LM !== 'undefined') LM.record('LM-014', e.message || 'Ошибка html2pdf', e.stack || '');
     showToast('Ошибка при создании PDF');
   }
 }
@@ -616,24 +507,19 @@ function setText(id, text) {
 function collectMoments() {
   const moments = [];
   const today = new Date();
-
   const iHide = getMyHideFlag();
   const partnerHide = getPartnerHideFlag();
 
   for (let i = 0; i < 30 && moments.length < 4; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const key = fmtDate(d);
-    const v = APP.state.votes[key];
+    const v = APP.state.votes[fmtDate(d)];
     if (!v) continue;
-
     const vals = [];
     if (v.you && !iHide) vals.push(v.you);
     if (v.partner && !partnerHide) vals.push(v.partner);
-
     if (vals.length && Math.max.apply(null, vals) === 5) {
-      moments.push('❤️ ' + d.getDate() + '.' + (d.getMonth() + 1)
-                 + ' — идеальный день с оценкой 5');
+      moments.push('❤️ ' + d.getDate() + '.' + (d.getMonth() + 1) + ' — идеальный день с оценкой 5');
     }
   }
 
@@ -641,42 +527,31 @@ function collectMoments() {
     for (let i = 0; i < 30 && moments.length < 4; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      const key = fmtDate(d);
-      const v = APP.state.votes[key];
-      if (!v) continue;
-
       const label = d.getDate() + '.' + (d.getMonth() + 1);
-      const already = moments.some(function (m) { return m.indexOf(label) !== -1; });
-
+      if (moments.some(function (m) { return m.indexOf(label) !== -1; })) continue;
+      const v = APP.state.votes[fmtDate(d)];
+      if (!v) continue;
       const vals = [];
       if (v.you && !iHide) vals.push(v.you);
       if (v.partner && !partnerHide) vals.push(v.partner);
-
-      if (!already && vals.length && Math.max.apply(null, vals) === 4) {
+      if (vals.length && Math.max.apply(null, vals) === 4) {
         moments.push('💕 ' + label + ' — тёплый день');
       }
     }
   }
 
-  if (!moments.length) {
-    moments.push('✨ Начните голосовать, чтобы увидеть моменты');
-  }
-
+  if (!moments.length) moments.push('✨ Начните голосовать, чтобы увидеть моменты');
   return moments;
 }
 
-/* ============================================================
-   ЖУРНАЛ ОШИБОК
-   ============================================================ */
+/* ---------- ЖУРНАЛ ОШИБОК ---------- */
+
 function openErrorLog() {
-  if (typeof LM === 'undefined') {
-    showToast('Журнал ошибок недоступен');
-    return;
-  }
+  if (typeof LM === 'undefined') { showToast('Журнал недоступен'); return; }
 
   const entries = LM.getAll();
-
   let listHtml;
+
   if (!entries.length) {
     listHtml = '<div class="error-log-empty">Ошибок не было — всё работает 🎉</div>';
   } else {
@@ -688,16 +563,14 @@ function openErrorLog() {
       html += '</div>';
       html += '<div class="error-log-item-desc">' + escapeHtml(LM.describe(e.code)) + '</div>';
       html += '<div class="error-log-item-msg">' + escapeHtml(e.message) + '</div>';
-      if (e.extra) {
-        html += '<div class="error-log-item-extra">' + escapeHtml(e.extra) + '</div>';
-      }
+      if (e.extra) html += '<div class="error-log-item-extra">' + escapeHtml(e.extra) + '</div>';
       html += '</div>';
       return html;
     }).join('');
   }
 
   const hint = entries.length
-    ? 'Тапните «Скопировать всё» — и пришлите разработчику.'
+    ? 'Тапните «Скопировать всё» и пришлите разработчику.'
     : 'Как только возникнет ошибка, она появится здесь.';
 
   openModal(
@@ -715,45 +588,26 @@ function openErrorLog() {
 function updateErrorLogCount() {
   const el = $('errorLogCount');
   if (!el) return;
-  if (typeof LM === 'undefined') {
-    el.textContent = '—';
-    return;
-  }
+  if (typeof LM === 'undefined') { el.textContent = '—'; return; }
   const count = LM.getAll().length;
   el.textContent = count === 0 ? 'Ошибок нет' : String(count);
   el.style.color = count > 0 ? 'var(--danger)' : '';
 }
 
 function onErrorLogAction(action) {
-  if (action === 'close') {
-    closeModal();
-    return;
-  }
+  if (action === 'close') { closeModal(); return; }
 
   if (action === 'copy-log') {
     if (typeof LM === 'undefined') return;
     const text = LM.toText();
-
     const fallback = function () {
-      try {
-        window.prompt('Скопируйте текст:', text);
-      } catch (e) {
-        showToast('Не удалось скопировать');
-      }
+      try { window.prompt('Скопируйте текст:', text); } catch (e) { showToast('Не удалось'); }
     };
-
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text)
         .then(function () { showToast('Журнал скопирован 📋'); })
-        .catch(function (e) {
-          if (typeof LM !== 'undefined') {
-            LM.record('LM-030', e.message || 'clipboard failed', 'copy-log');
-          }
-          fallback();
-        });
-    } else {
-      fallback();
-    }
+        .catch(fallback);
+    } else fallback();
     return;
   }
 
@@ -767,9 +621,8 @@ function onErrorLogAction(action) {
   }
 }
 
-/* ============================================================
-   PWA
-   ============================================================ */
+/* ---------- PWA ---------- */
+
 function setupPWA() {
   try {
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
@@ -784,11 +637,7 @@ function setupPWA() {
       const url = URL.createObjectURL(blob);
       navigator.serviceWorker.register(url).catch(function () {});
     }
-  } catch (e) {
-    if (typeof LM !== 'undefined') {
-      LM.record('LM-024', e.message || 'setupPWA failed');
-    }
-  }
+  } catch (e) {}
 }
 
 let deferredInstallPrompt = null;
@@ -806,32 +655,26 @@ function setupInstallPrompt() {
     const isStandalone =
       (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
       (typeof navigator !== 'undefined' && navigator.standalone);
-
     if (isIOS && !isStandalone) {
       const btn = $('installBtn');
       if (btn) btn.style.display = 'flex';
     }
-  } catch (e) { /* игнорируем */ }
+  } catch (e) {}
 }
 
 async function onInstallClick() {
   if (deferredInstallPrompt) {
-    try {
-      deferredInstallPrompt.prompt();
-      await deferredInstallPrompt.userChoice;
-    } catch (e) { /* игнорируем */ }
+    try { deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; } catch (e) {}
     deferredInstallPrompt = null;
     const btn = $('installBtn');
     if (btn) btn.style.display = 'none';
     return;
   }
-
   showToast('iOS: Поделиться → «На экран Домой»', 3500);
 }
 
-/* ============================================================
-   ОБРАБОТЧИКИ СОБЫТИЙ
-   ============================================================ */
+/* ---------- СОБЫТИЯ ---------- */
+
 function bindEvents() {
 
   const tabBar = $('tabBar');
@@ -843,8 +686,7 @@ function bindEvents() {
     });
   }
 
-  const voteBtns = document.querySelectorAll('.vote-btn');
-  voteBtns.forEach(function (btn) {
+  document.querySelectorAll('.vote-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       if (btn.disabled) return;
       const v = parseInt(btn.dataset.vote, 10);
@@ -857,14 +699,12 @@ function bindEvents() {
     calGrid.addEventListener('click', function (e) {
       const cell = e.target.closest('.cal-cell');
       if (!cell || !cell.dataset.date) return;
-      const day = parseInt(cell.dataset.day, 10);
-      onCalCellClick(cell.dataset.date, day);
+      onCalCellClick(cell.dataset.date, parseInt(cell.dataset.day, 10));
     });
   }
 
   const calPrev = $('calPrev');
   if (calPrev) calPrev.addEventListener('click', prevMonth);
-
   const calNext = $('calNext');
   if (calNext) calNext.addEventListener('click', nextMonth);
 
@@ -882,7 +722,7 @@ function bindEvents() {
     segmented.addEventListener('click', function (e) {
       const btn = e.target.closest('.seg-btn');
       if (!btn) return;
-      document.querySelectorAll('.seg-btn').forEach(function (b) {
+      document.querySelectorAll('#segmented .seg-btn').forEach(function (b) {
         b.classList.remove('active');
       });
       btn.classList.add('active');
@@ -912,35 +752,23 @@ function bindEvents() {
   const modalContent = $('coupleModalContent');
   if (modalContent) {
     modalContent.addEventListener('click', function (e) {
+      const gBtn = e.target.closest('.gender-btn');
+      if (gBtn) { onGenderBtnClick(gBtn.dataset.gender); return; }
+
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
       const action = btn.dataset.action;
 
-      if (action === 'save-names') {
-        onNamesModalAction(action);
-      } else if (action === 'copy-log' || action === 'clear-log') {
-        onErrorLogAction(action);
-      } else {
-        onCoupleModalAction(action);
-      }
+      if (action === 'save-my-name') onMyNameModalAction(action);
+      else if (action === 'copy-log' || action === 'clear-log') onErrorLogAction(action);
+      else onCoupleModalAction(action);
     });
 
     modalContent.addEventListener('keydown', function (e) {
       if (e.key !== 'Enter') return;
-      const target = e.target;
-      if (target && target.id === 'joinCodeInput') {
-        e.preventDefault();
-        onCoupleModalAction('join');
-      }
-      if (target && target.id === 'myNameInput') {
-        e.preventDefault();
-        const partnerInp = $('partnerNameInput');
-        if (partnerInp) partnerInp.focus();
-      }
-      if (target && target.id === 'partnerNameInput') {
-        e.preventDefault();
-        onNamesModalAction('save-names');
-      }
+      const t = e.target;
+      if (t && t.id === 'joinCodeInput') { e.preventDefault(); onCoupleModalAction('join'); }
+      if (t && t.id === 'myNameInput') { e.preventDefault(); onMyNameModalAction('save-my-name'); }
     });
   }
 
@@ -955,7 +783,7 @@ function bindEvents() {
   if (coupleBtn) coupleBtn.addEventListener('click', openCoupleModal);
 
   const namesBtn = $('namesBtn');
-  if (namesBtn) namesBtn.addEventListener('click', openNamesModal);
+  if (namesBtn) namesBtn.addEventListener('click', openMyNameModal);
 
   const errorLogBtn = $('errorLogBtn');
   if (errorLogBtn) errorLogBtn.addEventListener('click', openErrorLog);
@@ -975,18 +803,11 @@ function bindEvents() {
   const resetBtn = $('resetBtn');
   if (resetBtn) resetBtn.addEventListener('click', resetAllData);
 
-  window.addEventListener('lm:error', function () {
-    updateErrorLogCount();
-  });
-
+  window.addEventListener('lm:error', function () { updateErrorLogCount(); });
   window.addEventListener('online', function () {
     updateSyncDot(HAS_SUPABASE && APP.coupleId ? 'on' : 'local');
   });
-
-  window.addEventListener('offline', function () {
-    updateSyncDot('off');
-  });
-
+  window.addEventListener('offline', function () { updateSyncDot('off'); });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') closeModal();
   });
