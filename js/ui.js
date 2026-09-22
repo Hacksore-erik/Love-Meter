@@ -1,3 +1,7 @@
+/* ============================================================
+   UI — тосты, табы, модалки, события, свайп-карусель
+   ============================================================ */
+
 let toastTimer = null;
 
 function showToast(msg, duration) {
@@ -23,31 +27,149 @@ function updateSyncDot(status) {
   else { dot.classList.add('local'); dot.title = 'Локальный режим'; }
 }
 
-function switchTab(tab) {
-  try {
-    document.querySelectorAll('.screen').forEach(function (s) {
-      s.classList.toggle('active', s.dataset.screen === tab);
+
+/* ============================================================
+   СВАЙП-КАРУСЕЛЬ
+   ============================================================ */
+
+const TAB_ORDER = ['home', 'awards', 'calendar', 'chart', 'profile'];
+let currentTab = 0;
+
+let swipe = {
+  active: false,
+  startX: 0,
+  startY: 0,
+  deltaX: 0,
+  deltaY: 0,
+  locked: false,
+  horizontal: false
+};
+
+function goToTab(index, animate) {
+  const screensTrack = $('screensTrack');
+  const tabBar = $('tabBar');
+  const screens = $('screens');
+  if (!screensTrack || !tabBar || !screens) return;
+
+  if (index < 0) index = 0;
+  if (index > TAB_ORDER.length - 1) index = TAB_ORDER.length - 1;
+  currentTab = index;
+
+  const offset = -(index * 20);
+
+  if (animate === false) {
+    screensTrack.classList.add('no-anim');
+    screensTrack.style.transform = 'translateX(' + offset + '%)';
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        screensTrack.classList.remove('no-anim');
+      });
     });
-    document.querySelectorAll('.tab-item').forEach(function (t) {
-      t.classList.toggle('active', t.dataset.tab === tab);
-    });
-    if (tab === 'awards') renderAchievements();
-    if (tab === 'calendar') renderCalendar();
-    if (tab === 'chart') renderChart();
-    if (tab === 'profile') { renderProfile(); updateErrorLogCount(); }
-  } catch (e) {
-    if (typeof LM !== 'undefined') {
-      LM.record('LM-029', e.message || 'Ошибка switchTab', 'tab=' + tab);
-    }
+  } else {
+    screensTrack.style.transform = 'translateX(' + offset + '%)';
   }
+
+  const allTabs = tabBar.querySelectorAll('.tab-item');
+  for (let i = 0; i < allTabs.length; i++) {
+    allTabs[i].classList.toggle('active', i === index);
+  }
+
+  // Сброс скролла у нового экрана
+  const allScreens = screens.querySelectorAll('.screen');
+  const activeScreen = allScreens[index];
+  if (activeScreen) activeScreen.scrollTop = 0;
+
+  // Ленивая отрисовка
+  const tab = TAB_ORDER[index];
+  if (tab === 'awards') renderAchievements();
+  if (tab === 'calendar') renderCalendar();
+  if (tab === 'chart') renderChart();
+  if (tab === 'profile') { renderProfile(); updateErrorLogCount(); }
+}
+
+function switchTab(tab) {
+  const idx = TAB_ORDER.indexOf(tab);
+  if (idx < 0) return;
+  goToTab(idx, true);
 }
 
 function isScreenActive(name) {
-  const s = document.querySelector('.screen[data-screen="' + name + '"]');
-  return !!(s && s.classList.contains('active'));
+  return TAB_ORDER[currentTab] === name;
 }
 
-/* ---------- ПРОФИЛЬ ---------- */
+function onTouchStart(e) {
+  const t = e.touches[0];
+  if (!t) return;
+  swipe.active = true;
+  swipe.startX = t.clientX;
+  swipe.startY = t.clientY;
+  swipe.deltaX = 0;
+  swipe.deltaY = 0;
+  swipe.locked = false;
+  swipe.horizontal = false;
+  const track = $('screensTrack');
+  if (track) track.classList.add('no-anim');
+}
+
+function onTouchMove(e) {
+  if (!swipe.active) return;
+  const track = $('screensTrack');
+  const screens = $('screens');
+  if (!track || !screens) return;
+
+  const t = e.touches[0];
+  if (!t) return;
+
+  swipe.deltaX = t.clientX - swipe.startX;
+  swipe.deltaY = t.clientY - swipe.startY;
+
+  if (!swipe.locked) {
+    if (Math.abs(swipe.deltaX) < 8 && Math.abs(swipe.deltaY) < 8) return;
+    swipe.horizontal = Math.abs(swipe.deltaX) > Math.abs(swipe.deltaY);
+    swipe.locked = true;
+  }
+
+  if (!swipe.horizontal) return;
+
+  const w = screens.clientWidth;
+  const baseOffset = -(currentTab * w);
+  let next = baseOffset + swipe.deltaX;
+
+  if (next > 0) next = next * 0.35;
+  else if (next < -(TAB_ORDER.length - 1) * w) {
+    next = -(TAB_ORDER.length - 1) * w + (next + (TAB_ORDER.length - 1) * w) * 0.35;
+  }
+
+  track.style.transform = 'translateX(' + next + 'px)';
+}
+
+function onTouchEnd() {
+  if (!swipe.active) return;
+  swipe.active = false;
+  const track = $('screensTrack');
+  const screens = $('screens');
+  if (!track || !screens) return;
+
+  track.classList.remove('no-anim');
+
+  if (!swipe.horizontal) return;
+
+  const w = screens.clientWidth;
+  const threshold = w * 0.22;
+
+  if (swipe.deltaX <= -threshold && currentTab < TAB_ORDER.length - 1) {
+    goToTab(currentTab + 1, true);
+  } else if (swipe.deltaX >= threshold && currentTab > 0) {
+    goToTab(currentTab - 1, true);
+  } else {
+    goToTab(currentTab, true);
+  }
+}
+
+
+/* ============================================================
+   ПРОФИЛЬ
+   ============================================================ */
 
 function renderProfile() {
   const pn = $('profileNames');
@@ -88,7 +210,10 @@ function buildCoupleTitle() {
   return you + ' & ' + partner;
 }
 
-/* ---------- МОДАЛКА ---------- */
+
+/* ============================================================
+   МОДАЛКА
+   ============================================================ */
 
 function openModal(htmlContent) {
   try {
@@ -116,7 +241,10 @@ function closeModal() {
   if (modal) modal.classList.remove('show');
 }
 
-/* ---------- МОДАЛКА ПАРЫ ---------- */
+
+/* ============================================================
+   МОДАЛКА ПАРЫ
+   ============================================================ */
 
 function openCoupleModal() {
   if (APP.coupleId) {
@@ -196,7 +324,6 @@ async function onCoupleModalAction(action) {
       return;
     }
 
-    /* Роль 'you' — ДО создания пары, чтобы owner_id и имя писались корректно */
     APP.myRole = 'you';
 
     const code = generateCoupleCode();
@@ -245,7 +372,6 @@ async function onCoupleModalAction(action) {
     APP.coupleId = code;
     storageSet(CONFIG.STORAGE.couple, code);
 
-    /* determineMyRole смотрит owner_id на сервере */
     await determineMyRole(code);
     await loadFromSupabase();
     await pushMyName();
@@ -268,7 +394,10 @@ function generateCoupleCode() {
   return s;
 }
 
-/* ---------- ИНФО О СЕРДЦЕ ---------- */
+
+/* ============================================================
+   ИНФО О СЕРДЦЕ
+   ============================================================ */
 
 function openHeartInfo() {
   const body = ''
@@ -284,7 +413,10 @@ function openHeartInfo() {
   openModal('<h3>Как считается состояние партнёра</h3>' + body);
 }
 
-/* ---------- МОДАЛКА «МОЁ ИМЯ» ---------- */
+
+/* ============================================================
+   МОДАЛКА «МОЁ ИМЯ»
+   ============================================================ */
 
 function openMyNameModal() {
   const myGender = getMyGender();
@@ -367,7 +499,10 @@ function escapeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
-/* ---------- ИНФО ---------- */
+
+/* ============================================================
+   ИНФО «О ПРИЛОЖЕНИИ»
+   ============================================================ */
 
 function openAboutModal() {
   const mode = HAS_SUPABASE
@@ -382,7 +517,10 @@ function openAboutModal() {
   );
 }
 
-/* ---------- ПРИВАТНОСТЬ ---------- */
+
+/* ============================================================
+   ПРИВАТНОСТЬ
+   ============================================================ */
 
 async function togglePrivacy() {
   try {
@@ -403,7 +541,10 @@ async function togglePrivacy() {
   } catch (e) {}
 }
 
-/* ---------- СБРОС ---------- */
+
+/* ============================================================
+   СБРОС
+   ============================================================ */
 
 function resetAllData() {
   if (!confirm('Сбросить ВСЕ данные приложения? Это необратимо.')) return;
@@ -419,7 +560,10 @@ function onCoupleStatePeriodClick(period) {
   renderCoupleState();
 }
 
-/* ---------- PDF ---------- */
+
+/* ============================================================
+   PDF
+   ============================================================ */
 
 let html2pdfLoading = null;
 
@@ -559,7 +703,10 @@ function collectMoments() {
   return moments;
 }
 
-/* ---------- ЖУРНАЛ ОШИБОК ---------- */
+
+/* ============================================================
+   ЖУРНАЛ ОШИБОК
+   ============================================================ */
 
 function openErrorLog() {
   if (typeof LM === 'undefined') { showToast('Журнал недоступен'); return; }
@@ -636,7 +783,10 @@ function onErrorLogAction(action) {
   }
 }
 
-/* ---------- PWA ---------- */
+
+/* ============================================================
+   PWA
+   ============================================================ */
 
 function setupPWA() {
   try {
@@ -688,19 +838,45 @@ async function onInstallClick() {
   showToast('iOS: Поделиться → «На экран Домой»', 3500);
 }
 
-/* ---------- СОБЫТИЯ ---------- */
+
+/* ============================================================
+   СОБЫТИЯ
+   ============================================================ */
 
 function bindEvents() {
-
   const tabBar = $('tabBar');
+  const screens = $('screens');
+  const appHeader = $('appHeader');
+
+  // Табы
   if (tabBar) {
     tabBar.addEventListener('click', function (e) {
       const tab = e.target.closest('.tab-item');
       if (!tab) return;
-      switchTab(tab.dataset.tab);
+      const idx = TAB_ORDER.indexOf(tab.dataset.tab);
+      if (idx >= 0) goToTab(idx, true);
     });
   }
 
+  // Свайп
+  if (screens) {
+    screens.addEventListener('touchstart', onTouchStart, { passive: true });
+    screens.addEventListener('touchmove', onTouchMove, { passive: true });
+    screens.addEventListener('touchend', onTouchEnd, { passive: true });
+    screens.addEventListener('touchcancel', onTouchEnd, { passive: true });
+
+    // Скролл-детект для шапки
+    screens.addEventListener('scroll', function () {
+      const allScreens = screens.querySelectorAll('.screen');
+      let scrolled = false;
+      for (let i = 0; i < allScreens.length; i++) {
+        if (allScreens[i].scrollTop > 4) { scrolled = true; break; }
+      }
+      if (appHeader) appHeader.classList.toggle('scrolled', scrolled);
+    }, true);
+  }
+
+  // Голосование
   document.querySelectorAll('.vote-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       if (btn.disabled) return;
@@ -709,6 +885,10 @@ function bindEvents() {
     });
   });
 
+  const voteChange = $('voteChange');
+  if (voteChange) voteChange.addEventListener('click', onVoteChangeClick);
+
+  // Календарь
   const calGrid = $('calGrid');
   if (calGrid) {
     calGrid.addEventListener('click', function (e) {
@@ -723,6 +903,7 @@ function bindEvents() {
   const calNext = $('calNext');
   if (calNext) calNext.addEventListener('click', nextMonth);
 
+  // Период «Общего состояния»
   const coupleStateSeg = $('coupleStateSegmented');
   if (coupleStateSeg) {
     coupleStateSeg.addEventListener('click', function (e) {
@@ -732,6 +913,7 @@ function bindEvents() {
     });
   }
 
+  // График: период
   const segmented = $('segmented');
   if (segmented) {
     segmented.addEventListener('click', function (e) {
@@ -740,14 +922,17 @@ function bindEvents() {
       document.querySelectorAll('#segmented .seg-btn').forEach(function (b) {
         b.classList.remove('active');
       });
-      btn.classList.add('active');
-      APP.currentPeriod = btn.dataset.period;
-      renderChart();
+      passive btn.classList.add('active');
+      APP.currentPeriod = btn:.dataset.period;
+      renderChart false();
     });
-  }
+  });
+ }
 
-  const chartSvg = $('chartSvg');
-  if (chartSvg) {
+  const chartSvg = $('chartSvg ');
+  if ( }
+
+chartSvg) {
     chartSvg.addEventListener('mouseover', function (e) {
       const hover = e.target.closest('.chart-hover');
       if (hover) onChartHover(hover);
@@ -761,12 +946,11 @@ function bindEvents() {
       e.preventDefault();
       onChartHover(hover);
       setTimeout(hideChartTooltip, 2000);
-    }, { passive: false });
-  }
-
+    }, {  // Инфо о сердце
   const heartInfoBtn = $('heartInfoBtn');
   if (heartInfoBtn) heartInfoBtn.addEventListener('click', openHeartInfo);
 
+  // Модальные кнопки
   const modalContent = $('coupleModalContent');
   if (modalContent) {
     modalContent.addEventListener('click', function (e) {
@@ -831,4 +1015,10 @@ function bindEvents() {
   });
 
   updateErrorLogCount();
+
+  // Стартовое положение карусели без анимации
+  goToTab(0, false);
+
+  // Плашка «обновлено» — каждые 12 секунд
+  setInterval(updateUpdatedHint, 12000);
 }
