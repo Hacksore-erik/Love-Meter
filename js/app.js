@@ -1,14 +1,5 @@
 /* ============================================================
    APP — точка входа
-   ============================================================
-   Загружается последним, связывает всё вместе.
-
-   Порядок:
-   1. initCore()      — синхронно
-   2. bindEvents()    — синхронно
-   3. Первый рендер   — синхронно
-   4. setupPWA()      — отложенно на 100 мс
-   5. Supabase        — асинхронно в фоне
    ============================================================ */
 
 function safeCall(code, label, fn) {
@@ -22,21 +13,106 @@ function safeCall(code, label, fn) {
   }
 }
 
+/* Проверка, что ключевые функции определены */
+function checkGlobals() {
+  var required = [
+    'initCore', 'loadState', 'saveState', 'recalcStats',
+    'computePartnerPercent', 'computeCouplePercent',
+    'updateHeart', 'renderVoteButtons', 'renderCoupleState', 'renderAll',
+    'handleVote', 'onVoteChangeClick',
+    'initCalendar', 'renderCalendar', 'renderChart',
+    'renderAchievements', 'renderProfile',
+    'bindEvents', 'goToTab', 'showToast', 'updateSyncDot', 'updateUpdatedHint'
+  ];
+  var missing = [];
+  for (var i = 0; i < required.length; i++) {
+    if (typeof window[required[i]] !== 'function') missing.push(required[i]);
+  }
+  if (missing.length && typeof LM !== 'undefined') {
+    LM.record('LM-025', 'Не найдены функции: ' + missing.join(', '), 'checkGlobals');
+  }
+  return missing;
+}
+
+/* Аварийный fallback: навешивает таб-бар и голосование напрямую,
+   если основной bindEvents не сработал или упал */
+function fallbackBind() {
+  try {
+    var tabBar = document.getElementById('tabBar');
+    if (tabBar && tabBar.getAttribute('data-fb-bound') !== '1') {
+      tabBar.setAttribute('data-fb-bound', '1');
+      var ORDER = ['home', 'awards', 'calendar', 'chart', 'profile'];
+      tabBar.addEventListener('click', function (e) {
+        var tab = e.target.closest('.tab-item');
+        if (!tab) return;
+        var idx = ORDER.indexOf(tab.dataset.tab);
+        if (idx < 0) return;
+
+        var all = tabBar.querySelectorAll('.tab-item');
+        for (var i = 0; i < all.length; i++) {
+          all[i].classList.toggle('active', i === idx);
+        }
+        var track = document.getElementById('screensTrack');
+        if (track) track.style.transform = 'translateX(-' + (idx * 20) + '%)';
+        var screens = document.querySelectorAll('.screen');
+        if (screens[idx]) screens[idx].scrollTop = 0;
+
+        // Ленивая отрисовка — если функции есть
+        if (ORDER[idx] === 'awards' && typeof renderAchievements === 'function') {
+          try { renderAchievements(); } catch (e) {}
+        }
+        if (ORDER[idx] === 'calendar' && typeof renderCalendar === 'function') {
+          try { renderCalendar(); } catch (e) {}
+        }
+        if (ORDER[idx] === 'chart' && typeof renderChart === 'function') {
+          try { renderChart(); } catch (e) {}
+        }
+        if (ORDER[idx] === 'profile' && typeof renderProfile === 'function') {
+          try { renderProfile(); } catch (e) {}
+        }
+      });
+    }
+  } catch (e) {
+    if (typeof LM !== 'undefined') LM.record('LM-005', 'fallbackBind tabs', e.message || '');
+  }
+
+  try {
+    var voteBtns = document.querySelectorAll('.vote-btn');
+    voteBtns.forEach(function (btn) {
+      if (btn.getAttribute('data-fb-bound') === '1') return;
+      btn.setAttribute('data-fb-bound', '1');
+      btn.addEventListener('click', function () {
+        if (btn.disabled) return;
+        var v = parseInt(btn.dataset.vote, 10);
+        if (v >= 1 && v <= 5 && typeof handleVote === 'function') {
+          try { handleVote(v); } catch (e) {}
+        }
+      });
+    });
+  } catch (e) {
+    if (typeof LM !== 'undefined') LM.record('LM-005', 'fallbackBind vote', e.message || '');
+  }
+}
+
 function init() {
 
-  /* ШАГ 1. СИНХРОННАЯ ИНИЦИАЛИЗАЦИЯ */
+  /* ШАГ 1. ЯДРО */
   safeCall('LM-028', 'initCore failed', function () {
     initCore();
   });
 
+  /* Защита: если state всё ещё null — создаём минимальный */
   if (!APP.state) {
     APP.state = {
       names: CONFIG.DEFAULTS.names,
       myName: CONFIG.DEFAULTS.myName,
       partnerName: CONFIG.DEFAULTS.partnerName,
+      myGender: CONFIG.DEFAULTS.myGender,
+      partnerGender: CONFIG.DEFAULTS.partnerGender,
       startDate: todayStr(),
       votes: {},
       hideMyVotes: false,
+      partnerHideFlag: false,
       streak: 0,
       totalVotes: 0
     };
@@ -47,90 +123,110 @@ function init() {
     }) || ('fallback-' + Date.now());
   }
 
-  /* ШАГ 2. ОБРАБОТЧИКИ */
+  /* ШАГ 2. ДИАГНОСТИКА */
+  safeCall('LM-025', 'checkGlobals', function () {
+    checkGlobals();
+  });
+
+  /* ШАГ 3. ОБРАБОТЧИКИ */
   safeCall('LM-005', 'bindEvents failed', function () {
-    bindEvents();
+    if (typeof bindEvents === 'function') bindEvents();
   });
 
-  /* ШАГ 3. ПЕРВЫЙ РЕНДЕР */
+  /* ШАГ 4. АВАРИЙНЫЙ FALLBACK — гарантирует работу табов и голосования */
+  safeCall('LM-005', 'fallbackBind failed', function () {
+    fallbackBind();
+  });
+
+  /* ШАГ 5. ПЕРВЫЙ РЕНДЕР */
   safeCall('LM-003', 'initCalendar failed', function () {
-    initCalendar();
+    if (typeof initCalendar === 'function') initCalendar();
   });
-
   safeCall('LM-004', 'renderAll failed', function () {
-    renderAll();
+    if (typeof renderAll === 'function') renderAll();
   });
-
   safeCall('LM-009', 'renderAchievements failed', function () {
-    renderAchievements();
+    if (typeof renderAchievements === 'function') renderAchievements();
   });
-
   safeCall('LM-010', 'renderCalendar failed', function () {
-    renderCalendar();
+    if (typeof renderCalendar === 'function') renderCalendar();
   });
-
   safeCall('LM-011', 'renderChart failed', function () {
-    renderChart();
+    if (typeof renderChart === 'function') renderChart();
   });
-
   safeCall('LM-012', 'renderProfile failed', function () {
-    renderProfile();
+    if (typeof renderProfile === 'function') renderProfile();
   });
 
+  /* ШАГ 6. СИНХРОНИЗАЦИЯ */
   safeCall('LM-026', 'updateSyncDot failed', function () {
-    updateSyncDot(APP.coupleId ? 'on' : 'local');
+    if (typeof updateSyncDot === 'function') {
+      updateSyncDot(APP.coupleId ? 'on' : 'local');
+    }
   });
 
-  /* ШАГ 4. PWA */
+  /* ШАГ 7. PWA */
   setTimeout(function () {
-    safeCall('LM-024', 'setupPWA failed', function () {
-      setupPWA();
-    });
-    safeCall('LM-024', 'setupInstallPrompt failed', function () {
-      setupInstallPrompt();
-    });
+    try { if (typeof setupPWA === 'function') setupPWA(); } catch (e) {}
+    try { if (typeof setupInstallPrompt === 'function') setupInstallPrompt(); } catch (e) {}
   }, 100);
 
-  /* ШАГ 5. SUPABASE В ФОНЕ */
-  if (HAS_SUPABASE) {
+  /* ШАГ 8. SUPABASE В ФОНЕ */
+  if (HAS_SUPABASE && typeof initSupabaseAsync === 'function') {
     initSupabaseAsync()
-      .then(async function (client) {
+      .then(function (client) {
         if (!client) {
-          updateSyncDot('local');
+          try { if (typeof updateSyncDot === 'function') updateSyncDot('local'); } catch (e) {}
           return;
         }
 
-        if (APP.coupleId) {
-          await determineMyRole(APP.coupleId);
-
-          return loadFromSupabase()
-            .then(function (ok) {
-              if (ok) {
-                subscribeRealtime();
-                updateSyncDot('on');
-
-                safeCall('LM-004', 'renderAll after sync', function () { renderAll(); });
-                safeCall('LM-009', 'renderAchievements after sync', function () { renderAchievements(); });
-                safeCall('LM-010', 'renderCalendar after sync', function () { renderCalendar(); });
-                safeCall('LM-011', 'renderChart after sync', function () { renderChart(); });
-                safeCall('LM-012', 'renderProfile after sync', function () { renderProfile(); });
-              } else {
-                updateSyncDot('off');
-              }
-            })
-            .catch(function (e) {
-              if (typeof LM !== 'undefined') {
-                LM.record('LM-017',
-                  (e && e.message) || 'loadFromSupabase rejected',
-                  (e && e.stack ? e.stack.substring(0, 300) : ''));
-              }
-            });
-        } else {
-          updateSyncDot('local');
+        if (!APP.coupleId) {
+          try { if (typeof updateSyncDot === 'function') updateSyncDot('local'); } catch (e) {}
+          return;
         }
+
+        if (typeof determineMyRole !== 'function' || typeof loadFromSupabase !== 'function') {
+          return;
+        }
+
+        return determineMyRole(APP.coupleId)
+          .then(function () {
+            return loadFromSupabase();
+          })
+          .then(function (ok) {
+            if (ok) {
+              try { if (typeof subscribeRealtime === 'function') subscribeRealtime(); } catch (e) {}
+              try { if (typeof updateSyncDot === 'function') updateSyncDot('on'); } catch (e) {}
+
+              safeCall('LM-004', 'renderAll after sync', function () {
+                if (typeof renderAll === 'function') renderAll();
+              });
+              safeCall('LM-009', 'renderAchievements after sync', function () {
+                if (typeof renderAchievements === 'function') renderAchievements();
+              });
+              safeCall('LM-010', 'renderCalendar after sync', function () {
+                if (typeof renderCalendar === 'function') renderCalendar();
+              });
+              safeCall('LM-011', 'renderChart after sync', function () {
+                if (typeof renderChart === 'function') renderChart();
+              });
+              safeCall('LM-012', 'renderProfile after sync', function () {
+                if (typeof renderProfile === 'function') renderProfile();
+              });
+            } else {
+              try { if (typeof updateSyncDot === 'function') updateSyncDot('off'); } catch (e) {}
+            }
+          })
+          .catch(function (e) {
+            if (typeof LM !== 'undefined') {
+              LM.record('LM-017',
+                (e && e.message) || 'loadFromSupabase rejected',
+                (e && e.stack ? e.stack.substring(0, 300) : ''));
+            }
+          });
       })
       .catch(function (e) {
-        updateSyncDot('off');
+        try { if (typeof updateSyncDot === 'function') updateSyncDot('off'); } catch (err) {}
         if (typeof LM !== 'undefined') {
           LM.record('LM-016',
             (e && e.message) || 'initSupabaseAsync rejected',
@@ -139,18 +235,19 @@ function init() {
       });
   }
 
-  /* Служебное */
+  /* Visibility — обновляем при возврате на вкладку */
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible') return;
-    safeCall('LM-026', 'visibilitychange recalc', function () {
-      recalcStats();
-      saveState();
-      renderAll();
-      renderAchievements();
-      updateErrorLogCount();
+    safeCall('LM-026', 'visibilitychange', function () {
+      if (typeof recalcStats === 'function') recalcStats();
+      if (typeof saveState === 'function') saveState();
+      if (typeof renderAll === 'function') renderAll();
+      if (typeof renderAchievements === 'function') renderAchievements();
+      if (typeof updateErrorLogCount === 'function') updateErrorLogCount();
     });
   });
 
+  /* Отладка */
   try {
     window.__LOVEMETER__ = {
       APP: APP,
@@ -160,16 +257,24 @@ function init() {
         try { return JSON.parse(JSON.stringify(APP.state)); }
         catch (e) { return APP.state; }
       },
-      reset: function () {
-        storageRemove(CONFIG.STORAGE.state);
-        location.reload();
-      },
+      checkGlobals: checkGlobals,
       errors: function () {
         if (typeof LM === 'undefined') return 'Logger недоступен';
         return LM.toText();
+      },
+      dump: function () {
+        if (typeof LM === 'undefined') return 'нет LM';
+        try {
+          localStorage.setItem('lm_error_dump', LM.toText());
+          return 'OK: записано в lm_error_dump';
+        } catch (e) { return 'ошибка: ' + e.message; }
+      },
+      reset: function () {
+        storageRemove(CONFIG.STORAGE.state);
+        location.reload();
       }
     };
-  } catch (e) { /* игнорируем */ }
+  } catch (e) {}
 }
 
 if (document.readyState === 'loading') {
