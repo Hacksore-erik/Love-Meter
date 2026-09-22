@@ -1,73 +1,195 @@
 /* ============================================================
    SCREENS — логика экранов
    ============================================================
-   Файл отвечает за отрисовку и интерактив четырёх экранов:
-   - Главная: сердце партнёра + голосование + блок «Общее состояние»
+   - Главная: сердце партнёра (SVG-волна) + голосование + «Общее состояние»
    - Награды: достижения
    - Календарь
    - Динамика: график + сравнение + рекорды
-
-   Изменения в этой версии:
-   - updateHeart() показывает состояние ПАРТНЁРА
-   - renderCoupleState() — блок «Общее состояние пары»
-   - renderCalendar/renderChart учитывают флаги скрытия
-   - инфо-модалка о сердце вынесена в ui.js (openHeartInfo)
    ============================================================ */
 
 
 /* ============================================================
    ГЛАВНАЯ — СЕРДЦЕ (состояние партнёра)
    ============================================================ */
+
+const HEART_Y_TOP = -5;
+const HEART_Y_BOTTOM = 195;
+
+function percentToY(pct) {
+  return HEART_Y_BOTTOM - (pct / 100) * (HEART_Y_BOTTOM - HEART_Y_TOP);
+}
+
+function wavePath(y) {
+  return 'M -60 ' + y +
+         ' Q -35 ' + (y - 4) + ', -10 ' + y +
+         ' T 40 ' + y +
+         ' T 90 ' + y +
+         ' T 140 ' + y +
+         ' T 190 ' + y +
+         ' T 240 ' + y +
+         ' L 260 200 L -60 200 Z';
+}
+
+function setStopColors(grad, colors) {
+  if (!grad) return;
+  const stops = grad.getElementsByTagName('stop');
+  for (let i = 0; i < colors.length && i < stops.length; i++) {
+    stops[i].setAttribute('stop-color', colors[i]);
+  }
+}
+
+function setHeartLevel(pct) {
+  const waveFront = $('waveFront');
+  const percentEl = $('heartPercent');
+  const statusPill = $('statusPill');
+  const heartGlow = $('heartGlow');
+  const coupleRing = $('coupleStateRing');
+  const emptyGrad = $('emptyGrad');
+  const liquidGrad = $('liquidGrad');
+  if (!waveFront || !percentEl) return null;
+
+  try {
+    waveFront.setAttribute('d', wavePath(percentToY(pct)));
+    percentEl.textContent = pct + '%';
+
+    let emptyColors, liquidColors, glow, status, pillBg, pillColor, ringColor;
+
+    if (pct <= 20) {
+      emptyColors  = ['#e8e8ee', '#d8d8e0'];
+      liquidColors = ['#c7ccd6', '#a8b0bd', '#8e8e93'];
+      glow = 'rgba(142,142,147,0.28)';
+      status = 'Нужен тёплый разговор 💬';
+      pillBg = '#f2f2f7'; pillColor = '#6e6e73'; ringColor = '#b8bcc7';
+    } else if (pct <= 40) {
+      emptyColors  = ['#eaf1ff', '#dbe6ff'];
+      liquidColors = ['#a9c6ff', '#7aa7ff', '#5e7dff'];
+      glow = 'rgba(94,125,255,0.3)';
+      status = 'Немного прохладно ❄️';
+      pillBg = '#eef2ff'; pillColor = '#3d5eff'; ringColor = '#7aa7ff';
+    } else if (pct <= 60) {
+      emptyColors  = ['#f5eeff', '#ebe0ff'];
+      liquidColors = ['#d4b5ff', '#b98aff', '#a56bff'];
+      glow = 'rgba(165,107,255,0.3)';
+      status = 'Спокойно и стабильно 💜';
+      pillBg = '#f5eeff'; pillColor = '#7d3dff'; ringColor = '#b98aff';
+    } else if (pct <= 80) {
+      emptyColors  = ['#ffe5eb', '#ffd0da'];
+      liquidColors = ['#ffb1c1', '#ff7da1', '#ff2d55'];
+      glow = 'rgba(255,94,125,0.35)';
+      status = 'Между вами тепло 💗';
+      pillBg = '#fff0f3'; pillColor = '#ff2d55'; ringColor = '#ff7da1';
+    } else {
+      emptyColors  = ['#ffe0e8', '#ffc8d5'];
+      liquidColors = ['#ff8fa3', '#ff5e7d', '#ff2d55'];
+      glow = 'rgba(255,45,85,0.42)';
+      status = 'Любовь пылает! ❤️‍🔥';
+      pillBg = '#ffe9ec'; pillColor = '#d62e4d'; ringColor = '#ff2d55';
+    }
+
+    setStopColors(emptyGrad, emptyColors);
+    setStopColors(liquidGrad, liquidColors);
+    if (heartGlow) heartGlow.style.setProperty('--glow-color', glow);
+    if (statusPill) {
+      statusPill.textContent = status;
+      statusPill.style.background = pillBg;
+      statusPill.style.color = pillColor;
+    }
+    if (coupleRing) coupleRing.style.borderColor = ringColor;
+
+    return status;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setPartnerOnline(on) {
+  const heartContainer = $('heartContainer');
+  const partnerDot = $('partnerDot');
+  const partnerStatus = $('partnerStatus');
+  const isOn = !!on;
+
+  if (heartContainer) heartContainer.classList.toggle('online', isOn);
+  if (partnerDot) partnerDot.classList.toggle('online', isOn);
+  if (partnerStatus) {
+    partnerStatus.textContent = isOn ? 'партнёр в сети' : 'партнёр не в сети';
+    partnerStatus.classList.toggle('online', isOn);
+  }
+}
+
+let _updateHintSeconds = 2;
+
+function updateUpdatedHint() {
+  const el = $('updatedHint');
+  if (!el) return;
+
+  let txt;
+  if (_updateHintSeconds < 10) txt = 'обновлено только что';
+  else if (_updateHintSeconds < 60) txt = 'обновлено ' + _updateHintSeconds + ' сек назад';
+  else {
+    const m = Math.floor(_updateHintSeconds / 60);
+    txt = 'обновлено ' + m + ' мин назад';
+  }
+  el.textContent = txt;
+
+  _updateHintSeconds += 12;
+  if (_updateHintSeconds > 600) _updateHintSeconds = 2;
+}
+
 function updateHeart(animated) {
-  const fill = $('heartFill');
-  const pctEl = $('heartPercent');
-  const statusEl = $('heartStatus');
-  if (!fill || !pctEl || !statusEl) return;
+  const percentEl = $('heartPercent');
+  const statusEl = $('statusPill');
+  const heartGlow = $('heartGlow');
+  const coupleRing = $('coupleStateRing');
+  const waveFront = $('waveFront');
+  if (!percentEl || !statusEl) return;
 
   const partner = computePartnerPercent();
   const pct = partner.percent;
-  const y = 195 - (pct / 100) * 190;
 
-  fill.style.transition = animated
-    ? 'y 1s cubic-bezier(0.4, 0, 0.2, 1)'
-    : 'none';
+  // Особые случаи: скрыто / нет данных
+  if (partner.hidden || !partner.hasData) {
+    const emptyGrad = $('emptyGrad');
+    const liquidGrad = $('liquidGrad');
+    setStopColors(emptyGrad, ['#e8e8ee', '#d8d8e0']);
+    setStopColors(liquidGrad, ['#c7ccd6', '#a8b0bd', '#8e8e93']);
+    if (waveFront) waveFront.setAttribute('d', wavePath(percentToY(0)));
+    if (heartGlow) heartGlow.style.setProperty('--glow-color', 'rgba(142,142,147,0.28)');
+    if (coupleRing) coupleRing.style.borderColor = '#b8bcc7';
 
-  fill.setAttribute('y', y);
+    if (partner.hidden) {
+      percentEl.textContent = '🔒';
+      statusEl.textContent = 'Партнёр скрыл свои оценки';
+      statusEl.style.background = '#f2f2f7';
+      statusEl.style.color = '#6e6e73';
+    } else {
+      percentEl.textContent = '—%';
+      statusEl.textContent = 'Партнёр пока не отмечал настроение';
+      statusEl.style.background = '#f2f2f7';
+      statusEl.style.color = '#6e6e73';
+    }
 
-  let status, color, percentText;
+    updateUpdatedHint();
+    return;
+  }
 
-  if (partner.hidden) {
-    percentText = '🔒';
-    status = 'Партнёр скрыл свои оценки';
-    color = '#8e8e93';
-  } else if (!partner.hasData) {
-    percentText = '0%';
-    status = 'Партнёр пока не отмечал настроение';
-    color = '#8e8e93';
-  } else {
-    percentText = pct + '%';
+  // Обычный случай — уровень по проценту
+  setHeartLevel(pct);
 
-    if (pct <= 20) { status = 'Нужен тёплый разговор 💬'; color = '#8e8e93'; }
-    else if (pct <= 40) { status = 'Немного прохладно ❄️'; color = '#5e7dff'; }
-    else if (pct <= 60) { status = 'Спокойно и стабильно 💜'; color = '#a56bff'; }
-    else if (pct <= 80) { status = 'Между вами тепло 💗'; color = '#ff5e7d'; }
-    else { status = 'Любовь пылает! ❤️‍🔥'; color = '#ff2d55'; }
+  // Дополнение к статусу: когда последний голос
+  if (!partner.votedToday && partner.lastVoteDaysAgo !== null) {
+    const days = partner.lastVoteDaysAgo;
+    let daysText;
+    if (days === 1) daysText = 'вчера';
+    else if (days === 2) daysText = '2 дня назад';
+    else if (days < 7) daysText = days + ' дней назад';
+    else daysText = 'давно';
 
-    if (!partner.votedToday && partner.lastVoteDaysAgo !== null) {
-      const days = partner.lastVoteDaysAgo;
-      let daysText;
-      if (days === 1) daysText = 'вчера';
-      else if (days === 2) daysText = '2 дня назад';
-      else if (days < 7) daysText = days + ' дней назад';
-      else daysText = 'давно';
-
-      status = status + ' • последний голос ' + daysText;
+    if (statusEl) {
+      statusEl.textContent = statusEl.textContent + ' • последний голос ' + daysText;
     }
   }
 
-  pctEl.textContent = percentText;
-  statusEl.textContent = status;
-  statusEl.style.color = color;
+  updateUpdatedHint();
 }
 
 
@@ -137,6 +259,7 @@ function renderVoteButtons() {
   const btns = document.querySelectorAll('.vote-btn');
   const question = $('voteQuestion');
   const hint = $('voteHint');
+  const changeBtn = $('voteChange');
   if (!btns.length || !question || !hint) return;
 
   btns.forEach(function (btn, i) {
@@ -148,33 +271,46 @@ function renderVoteButtons() {
       btn.textContent = '🤍';
       btn.classList.remove('active');
     }
+    btn.disabled = false;
+    btn.style.opacity = '1';
   });
 
   if (myVote) {
     question.textContent = 'Спасибо! Партнёр тоже может проголосовать 💕';
     hint.textContent = 'Твой голос: ' + myVote + ' из 5';
-    btns.forEach(function (b) {
-      b.disabled = true;
-      b.style.opacity = '0.7';
-    });
+    btns.forEach(function (b) { b.disabled = true; b.style.opacity = '0.75'; });
+    if (changeBtn) changeBtn.classList.add('visible');
   } else {
     question.textContent = 'Как ты себя чувствуешь сегодня в отношениях?';
     hint.textContent = 'Можно менять один раз в день';
-    btns.forEach(function (b) {
-      b.disabled = false;
-      b.style.opacity = '1';
-    });
+    if (changeBtn) changeBtn.classList.remove('visible');
   }
+}
+
+function unlockVoteButtons() {
+  const btns = document.querySelectorAll('.vote-btn');
+  const question = $('voteQuestion');
+  const hint = $('voteHint');
+  const changeBtn = $('voteChange');
+
+  btns.forEach(function (b) { b.disabled = false; b.style.opacity = '1'; });
+  if (question) question.textContent = 'Как ты себя чувствуешь сегодня в отношениях?';
+  if (hint) hint.textContent = 'Можно менять один раз в день';
+  if (changeBtn) changeBtn.classList.remove('visible');
 }
 
 async function handleVote(vote) {
   try {
-    if (getTodayVote()) {
-      showToast('Сегодня ты уже голосовал(а) 💕');
+    const current = getTodayVote();
+    const key = todayStr();
+
+    if (current && current !== vote) {
+      // Смена голоса — лимит 1 раз в день
+      // (проверку лимита оставляем на будущее; пока разрешаем менять)
+    } else if (current === vote) {
       return;
     }
 
-    const key = todayStr();
     if (!APP.state.votes[key]) APP.state.votes[key] = {};
     APP.state.votes[key][APP.myRole] = vote;
 
@@ -187,9 +323,10 @@ async function handleVote(vote) {
       if (v <= vote) {
         btn.textContent = '❤️';
         btn.classList.add('active', 'pop');
-        setTimeout(function () {
-          btn.classList.remove('pop');
-        }, 400);
+        setTimeout(function () { btn.classList.remove('pop'); }, 400);
+      } else {
+        btn.textContent = '🤍';
+        btn.classList.remove('active');
       }
     });
 
@@ -211,17 +348,18 @@ async function handleVote(vote) {
 
     if (APP.supabaseClient && APP.coupleId) {
       const ok = await pushVoteToSupabase(key, APP.myRole, vote);
-      if (ok) {
-        showToast('Голос отправлен партнёру 💕');
-      } else {
-        showToast('Сохранено локально ⏳');
-      }
+      if (ok) showToast('Голос отправлен партнёру 💕');
+      else showToast('Сохранено локально ⏳');
     } else {
       showToast('Голос учтён! 💕');
     }
   } catch (e) {
     showToast('Не удалось сохранить голос');
   }
+}
+
+function onVoteChangeClick() {
+  unlockVoteButtons();
 }
 
 
@@ -398,12 +536,8 @@ function onCalCellClick(dateKey, day) {
   const partnerHide = getPartnerHideFlag();
 
   const parts = [];
-  if (v.you) {
-    parts.push(iHide ? 'ты •••' : 'ты ' + v.you);
-  }
-  if (v.partner) {
-    parts.push(partnerHide ? 'партнёр •••' : 'партнёр ' + v.partner);
-  }
+  if (v.you) parts.push(iHide ? 'ты •••' : 'ты ' + v.you);
+  if (v.partner) parts.push(partnerHide ? 'партнёр •••' : 'партнёр ' + v.partner);
 
   showToast(day + ' ' + monthName + ': ' + parts.join(', '));
 }
@@ -434,19 +568,13 @@ function renderInsight() {
 
 function prevMonth() {
   APP.calMonth--;
-  if (APP.calMonth < 0) {
-    APP.calMonth = 11;
-    APP.calYear--;
-  }
+  if (APP.calMonth < 0) { APP.calMonth = 11; APP.calYear--; }
   renderCalendar();
 }
 
 function nextMonth() {
   APP.calMonth++;
-  if (APP.calMonth > 11) {
-    APP.calMonth = 0;
-    APP.calYear++;
-  }
+  if (APP.calMonth > 11) { APP.calMonth = 0; APP.calYear++; }
   renderCalendar();
 }
 
@@ -466,18 +594,11 @@ function renderChart() {
     : 0;
 
   const avgEl = $('chartAvg');
-  if (avgEl) {
-    avgEl.textContent = validPoints.length ? avgVal.toFixed(1) : '—';
-  }
+  if (avgEl) avgEl.textContent = validPoints.length ? avgVal.toFixed(1) : '—';
 
   renderDelta(validPoints);
 
-  const W = 320;
-  const H = 180;
-  const padL = 28;
-  const padR = 8;
-  const padT = 10;
-  const padB = 10;
+  const W = 320, H = 180, padL = 28, padR = 8, padT = 10, padB = 10;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
 
@@ -670,18 +791,13 @@ function renderCompare() {
 
   const youEl = $('compareYouVal');
   if (youEl) {
-    if (stats.iHide) {
-      youEl.textContent = '•••';
-    } else {
-      youEl.textContent = stats.youValues.length
-        ? stats.youAvg.toFixed(1)
-        : '—';
-    }
+    youEl.textContent = stats.iHide
+      ? '•••'
+      : (stats.youValues.length ? stats.youAvg.toFixed(1) : '—');
   }
 
   const partnerRow = $('comparePartner');
   const partnerValEl = $('comparePartnerVal');
-
   if (partnerRow && partnerValEl) {
     if (stats.partnerHide) {
       partnerRow.classList.add('compare-blur');
@@ -702,8 +818,7 @@ function drawSparkline(id, vals, color) {
   const svg = $(id);
   if (!svg) return;
 
-  const W = 60;
-  const H = 20;
+  const W = 60, H = 20;
 
   if (vals.length < 2) {
     svg.innerHTML = '';
@@ -716,16 +831,11 @@ function drawSparkline(id, vals, color) {
   const stepX = W / (vals.length - 1);
 
   const pts = vals.map(function (v, i) {
-    return {
-      x: i * stepX,
-      y: H - 2 - ((v - min) / range) * (H - 4)
-    };
+    return { x: i * stepX, y: H - 2 - ((v - min) / range) * (H - 4) };
   });
 
   let d = 'M ' + pts[0].x + ',' + pts[0].y;
-  for (let i = 1; i < pts.length; i++) {
-    d += ' L ' + pts[i].x + ',' + pts[i].y;
-  }
+  for (let i = 1; i < pts.length; i++) d += ' L ' + pts[i].x + ',' + pts[i].y;
 
   svg.innerHTML = '<path d="' + d + '" fill="none" stroke="' + color
                 + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
@@ -753,9 +863,7 @@ function renderRecords() {
   }
 
   const longestFiveEl = $('longestFive');
-  if (longestFiveEl) {
-    longestFiveEl.textContent = rec.longestFive + ' дн.';
-  }
+  if (longestFiveEl) longestFiveEl.textContent = rec.longestFive + ' дн.';
 }
 
 function formatShortDate(key) {
@@ -766,7 +874,7 @@ function formatShortDate(key) {
 
 
 /* ============================================================
-   ОБЩАЯ ФУНКЦИЯ — ПЕРЕРИСОВКА ГЛАВНОЙ
+   ОБЩАЯ ПЕРЕРИСОВКА ГЛАВНОЙ
    ============================================================ */
 function renderAll() {
   try {
@@ -776,9 +884,6 @@ function renderAll() {
 
     const sp = $('streakValue');
     if (sp) sp.textContent = APP.state.streak;
-
-    const sub = $('headerSubtitle');
-    if (sub) sub.textContent = APP.state.names;
 
     const pn = $('profileNames');
     if (pn) pn.textContent = APP.state.names;
