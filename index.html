@@ -11,13 +11,13 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<link rel="manifest" href="manifest.json?v=5">
-<link rel="apple-touch-icon" href="icon.svg?v=5">
-<link rel="icon" href="icon.svg?v=5" type="image/svg+xml">
-<link rel="stylesheet" href="css/base.css?v=5">
-<link rel="stylesheet" href="css/layout.css?v=5">
-<link rel="stylesheet" href="css/components.css?v=5">
-<link rel="stylesheet" href="css/animations.css?v=5">
+<link rel="manifest" href="manifest.json?v=6">
+<link rel="apple-touch-icon" href="icon.svg?v=6">
+<link rel="icon" href="icon.svg?v=6" type="image/svg+xml">
+<link rel="stylesheet" href="css/base.css?v=6">
+<link rel="stylesheet" href="css/layout.css?v=6">
+<link rel="stylesheet" href="css/components.css?v=6">
+<link rel="stylesheet" href="css/animations.css?v=6">
 <title>Love Meter</title>
 </head>
 <body>
@@ -194,106 +194,159 @@
         <div class="achievements-grid" id="achievementsGrid"></div>
       </section>
 
-      <section class="screen" data-screen="calendar" aria-label="Календарь">
-        <header class="screen-header">
-          <h2 class="screen-title">Календарь</h2>
-          <p class="screen-subtitle">Ваше настроение в отношениях</p>
-        </header>
+      <section class="screen" data-screen="stats" aria-label="Статистика">
 
-        <div class="cal-header">
-          <div class="cal-month" id="calMonthLabel">—</div>
-          <div class="cal-nav">
-            <button type="button" class="cal-nav-btn" id="calPrev" aria-label="Предыдущий месяц">‹</button>
-            <button type="button" class="cal-nav-btn" id="calNext" aria-label="Следующий месяц">›</button>
+        <h2 class="screen-title">Статистика</h2>
+        <p class="screen-sub" id="statsSub">Ваши отношения за последний месяц</p>
+
+        <div class="hero-card">
+          <div class="hero-head">
+            <div class="hero-label">Средняя оценка пары</div>
+            <div class="hero-month" id="heroMonth">—</div>
+          </div>
+          <div class="hero-value-row">
+            <div class="hero-value" id="heroAvg">—</div>
+            <div class="hero-unit">из 5</div>
+            <div class="hero-delta delta-same" id="heroDelta">—</div>
+          </div>
+          <div class="hero-meta" id="heroMeta">—</div>
+          <div class="hero-chart">
+            <svg viewBox="0 0 320 110" preserveAspectRatio="none" id="heroChartSvg">
+              <defs>
+                <linearGradient id="heroArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="rgba(255,45,85,0.35)"/>
+                  <stop offset="100%" stop-color="rgba(255,45,85,0)"/>
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
         </div>
 
-        <div class="card cal-card">
-          <div class="cal-weekdays" aria-hidden="true">
-            <div class="cal-weekday">Пн</div>
-            <div class="cal-weekday">Вт</div>
-            <div class="cal-weekday">Ср</div>
-            <div class="cal-weekday">Чт</div>
-            <div class="cal-weekday">Пт</div>
-            <div class="cal-weekday">Сб</div>
-            <div class="cal-weekday">Вс</div>
+        <div class="segmented-wrap" id="statsSeg" data-active="dynamics">
+          <div class="segmented-indicator"></div>
+          <button type="button" class="seg-btn active" data-stats="dynamics">
+            <svg viewBox="0 0 24 24"><path d="M4 18 L9 12 L13 15 L20 7"/><path d="M15 7 H20 V12"/></svg>
+            <span>Динамика</span>
+          </button>
+          <button type="button" class="seg-btn" data-stats="calendar">
+            <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10 H21"/><path d="M8 3 V7"/><path d="M16 3 V7"/></svg>
+            <span>Календарь</span>
+          </button>
+        </div>
+
+        <div class="stats-panel active" data-panel="dynamics">
+
+          <div class="period-segmented" id="periodSeg" data-active="month">
+            <div class="period-indicator"></div>
+            <button type="button" class="period-seg-btn" data-period="week">Неделя</button>
+            <button type="button" class="period-seg-btn active" data-period="month">Месяц</button>
+            <button type="button" class="period-seg-btn" data-period="year">Год</button>
           </div>
-          <div class="cal-grid" id="calGrid"></div>
-          <div class="cal-legend">
-            <div class="legend-item"><span class="legend-dot" style="background:var(--mood-1)"></span>Плохо</div>
-            <div class="legend-item"><span class="legend-dot" style="background:var(--mood-3)"></span>Средне</div>
-            <div class="legend-item"><span class="legend-dot" style="background:var(--mood-5)"></span>Отлично</div>
-            <div class="legend-item"><span class="legend-ring"></span>Оба голоса</div>
+
+          <div class="card chart-card">
+            <div class="chart-svg-wrap" id="chartWrap">
+              <svg viewBox="0 0 320 180" preserveAspectRatio="none" id="chartSvg">
+                <defs>
+                  <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="rgba(255,45,85,0.25)"/>
+                    <stop offset="100%" stop-color="rgba(255,45,85,0)"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="chart-empty" id="chartEmpty" style="display:none;">
+                Пока нет данных за этот период
+              </div>
+              <div class="chart-tooltip" id="chartTooltip">
+                <div class="tt-label" id="ttLabel"></div>
+                <div class="tt-value" id="ttValue"></div>
+              </div>
+            </div>
+            <div class="chart-x-labels" id="chartXLabels"></div>
+          </div>
+
+          <div class="duo-grid">
+            <div class="duo-card you">
+              <div class="duo-avatar" id="duoYouAvatar">🧑</div>
+              <div class="duo-name" id="duoYouName">Ты</div>
+              <div class="duo-value" id="duoYouValue">—</div>
+              <div class="duo-bar"><div class="duo-bar-fill" id="duoYouBar" style="width: 0%"></div></div>
+              <span class="duo-status" id="duoYouStatus">—</span>
+            </div>
+
+            <div class="duo-card partner">
+              <div class="duo-avatar" id="duoPartnerAvatar">🧑</div>
+              <div class="duo-name" id="duoPartnerName">Партнёр</div>
+              <div class="duo-value" id="duoPartnerValue">—</div>
+              <div class="duo-bar"><div class="duo-bar-fill" id="duoPartnerBar" style="width: 0%"></div></div>
+              <span class="duo-status" id="duoPartnerStatus">—</span>
+            </div>
+          </div>
+
+          <div class="compare-summary" id="compareSummary">
+            <span class="cmp-emoji">💗</span>
+            <span>Пока нет данных за этот период.</span>
+          </div>
+
+          <h3 class="section-title" style="margin-top: 16px;">🏆 Рекорды</h3>
+          <div class="record-list">
+            <div class="record-card">
+              <div class="record-icon gold">🏆</div>
+              <div class="record-info">
+                <div class="record-label">Лучший день</div>
+                <div class="record-value" id="bestDay">—</div>
+              </div>
+            </div>
+            <div class="record-card">
+              <div class="record-icon gray">📉</div>
+              <div class="record-info">
+                <div class="record-label">Худший день</div>
+                <div class="record-value" id="worstDay">—</div>
+              </div>
+            </div>
+            <div class="record-card">
+              <div class="record-icon fire">🔥</div>
+              <div class="record-info">
+                <div class="record-label">Самая длинная серия пятёрок</div>
+                <div class="record-value" id="longestFive">—</div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="card">
-          <h3 class="insight-title">✨ Инсайт месяца</h3>
-          <p class="insight-text" id="insightText">Пока нет данных за этот месяц.</p>
-        </div>
-      </section>
-
-      <section class="screen" data-screen="chart" aria-label="Динамика">
-        <header class="screen-header">
-          <h2 class="screen-title">Динамика</h2>
-          <p class="screen-subtitle">Как менялось настроение</p>
-        </header>
-
-        <div class="segmented" id="segmented" role="tablist">
-          <button type="button" class="seg-btn" data-period="week" role="tab">Неделя</button>
-          <button type="button" class="seg-btn active" data-period="month" role="tab">Месяц</button>
-          <button type="button" class="seg-btn" data-period="year" role="tab">Год</button>
-        </div>
-
-        <div class="card chart-card">
-          <div class="chart-header">
-            <div class="chart-avg" id="chartAvg">—</div>
-            <div class="chart-delta delta-same" id="chartDelta">= без изменений</div>
+        <div class="stats-panel" data-panel="calendar">
+          <div class="cal-header">
+            <div class="cal-month" id="calMonthLabel">—</div>
+            <div class="cal-nav">
+              <button type="button" class="cal-nav-btn" id="calPrev" aria-label="Предыдущий месяц">‹</button>
+              <button type="button" class="cal-nav-btn" id="calNext" aria-label="Следующий месяц">›</button>
+            </div>
           </div>
-          <div class="chart-svg-wrap" id="chartWrap">
-            <svg viewBox="0 0 320 180" preserveAspectRatio="none" id="chartSvg" aria-hidden="true"></svg>
-            <div class="chart-tooltip" id="chartTooltip" role="tooltip"></div>
-          </div>
-          <div class="chart-x-labels" id="chartXLabels"></div>
-        </div>
 
-       <div class="card">
-  <h3 class="compare-title">Сравнение</h3>
-  <div class="compare-row">
-    <span class="compare-indicator" style="background:var(--accent)"></span>
-    <span class="compare-label" id="compareYouLabel">Ты</span>
-    <svg class="compare-spark" id="sparkYou" width="60" height="20" aria-hidden="true"></svg>
-    <span class="compare-value" id="compareYouVal">—</span>
-    <span class="compare-status" id="compareYouStatus"></span>
-  </div>
-  <div class="compare-row" id="comparePartner">
-    <span class="compare-indicator" style="background:var(--partner)"></span>
-    <span class="compare-label" id="comparePartnerLabel">Партнёр</span>
-    <svg class="compare-spark" id="sparkPartner" width="60" height="20" aria-hidden="true"></svg>
-    <span class="compare-value" id="comparePartnerVal">—</span>
-    <span class="compare-status" id="comparePartnerStatus"></span>
-  </div>
-  <div class="compare-summary" id="compareSummary"></div>
-</div>
+          <div class="card cal-card">
+            <div class="cal-weekdays" aria-hidden="true">
+              <div class="cal-weekday">Пн</div>
+              <div class="cal-weekday">Вт</div>
+              <div class="cal-weekday">Ср</div>
+              <div class="cal-weekday">Чт</div>
+              <div class="cal-weekday">Пт</div>
+              <div class="cal-weekday">Сб</div>
+              <div class="cal-weekday">Вс</div>
+            </div>
+            <div class="cal-grid" id="calGrid"></div>
+            <div class="cal-legend">
+              <div class="legend-item"><span class="legend-dot" style="background:var(--mood-1)"></span>Плохо</div>
+              <div class="legend-item"><span class="legend-dot" style="background:var(--mood-3)"></span>Средне</div>
+              <div class="legend-item"><span class="legend-dot" style="background:var(--mood-5)"></span>Отлично</div>
+              <div class="legend-item"><span class="legend-ring"></span>Оба голоса</div>
+            </div>
+          </div>
 
-        <div class="card">
-          <h3 class="compare-title">Рекорды</h3>
-          <div class="record-row">
-            <span class="record-emoji">🏆</span>
-            <span class="record-label">Лучший день</span>
-            <span class="record-value" id="bestDay">—</span>
-          </div>
-          <div class="record-row">
-            <span class="record-emoji">📉</span>
-            <span class="record-label">Худший день</span>
-            <span class="record-value" id="worstDay">—</span>
-          </div>
-          <div class="record-row">
-            <span class="record-emoji">🔥</span>
-            <span class="record-label">Самая длинная серия 5</span>
-            <span class="record-value" id="longestFive">—</span>
+          <div class="insight-card">
+            <div class="insight-title">✨ Инсайт месяца</div>
+            <p class="insight-text" id="insightText">Пока нет данных за этот месяц.</p>
           </div>
         </div>
+
       </section>
 
       <section class="screen" data-screen="profile" aria-label="Профиль">
@@ -362,7 +415,7 @@
           <button type="button" class="settings-item" id="aboutBtn">
             <span class="settings-icon">ℹ️</span>
             <span class="settings-label">О приложении</span>
-            <span class="settings-value">v1.5</span>
+            <span class="settings-value">v1.6</span>
             <span class="settings-chevron">›</span>
           </button>
           <button type="button" class="settings-item" id="resetBtn">
@@ -400,7 +453,7 @@
       <span class="tab-label">Награды</span>
     </button>
 
-    <button type="button" class="tab-item" data-tab="calendar" role="tab" aria-label="Календарь">
+    <button type="button" class="tab-item" data-tab="stats" role="tab" aria-label="Статистика">
       <span class="tab-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24">
           <rect x="3" y="5" width="18" height="16" rx="2.5"/>
@@ -412,17 +465,7 @@
           <circle cx="16" cy="14" r="0.6"/>
         </svg>
       </span>
-      <span class="tab-label">Календарь</span>
-    </button>
-
-    <button type="button" class="tab-item" data-tab="chart" role="tab" aria-label="Динамика">
-      <span class="tab-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M4 18 L9 12 L13 15 L20 7"/>
-          <path d="M15 7 H20 V12"/>
-        </svg>
-      </span>
-      <span class="tab-label">Динамика</span>
+      <span class="tab-label">Статистика</span>
     </button>
 
     <button type="button" class="tab-item" data-tab="profile" role="tab" aria-label="Профиль">
@@ -479,12 +522,12 @@
   </footer>
 </div>
 
-<script src="js/logger.js?v=5"></script>
-<script src="js/config.js?v=5"></script>
-<script src="js/core.js?v=5"></script>
-<script src="js/supabase.js?v=5"></script>
-<script src="js/screens.js?v=5"></script>
-<script src="js/ui.js?v=5"></script>
-<script src="js/app.js?v=5"></script>
+<script src="js/logger.js?v=6"></script>
+<script src="js/config.js?v=6"></script>
+<script src="js/core.js?v=6"></script>
+<script src="js/supabase.js?v=6"></script>
+<script src="js/screens.js?v=6"></script>
+<script src="js/ui.js?v=6"></script>
+<script src="js/app.js?v=6"></script>
 </body>
 </html>
