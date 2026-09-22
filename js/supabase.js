@@ -1,28 +1,42 @@
 /* ============================================================
    SUPABASE — синхронизация между партнёрами
    ============================================================
-   Этот файл полностью опционален. Если в js/config.js
-   переменная CONFIG.SUPABASE.url и .anonKey пустые,
-   весь модуль работает вхолостую и не мешает приложению.
+   Файл полностью опционален. Если в js/config.js ключи пустые,
+   всё работает вхолостую.
 
-   Что делает:
-   - Ленивая загрузка клиента Supabase через ESM
-   - Загрузка данных пары и голосов с сервера
-   - Отправка новых голосов
-   - Подписка на realtime-обновления от партнёра
-   - Обновление метаданных пары (имена, startDate, openMode)
+   Что синхронизируется:
+   - голоса (таблица votes)
+   - имена пары (couples.names)
+   - дата старта (couples.start_date)
+   - флаги скрытия оценок (couples.hide_you, couples.hide_partner)
 
-   Все функции обёрнуты в try/catch. Любая ошибка сети или
-   отсутствие ключей не должны ломать приложение — оно
-   продолжит работать в локальном режиме.
+   Как устроены флаги скрытия:
+   - hide_you     = true, если партнёр 'you' скрыл СВОИ оценки
+   - hide_partner = true, если партнёр 'partner' скрыл СВОИ оценки
+
+   Каждое устройство знает только свой флаг (hideMyVotes) и
+   определяет свой столбец через APP.myRole:
+   - если myRole='you'   → пишу в hide_you
+   - если myRole='partner' → пишу в hide_partner
+
+   При чтении:
+   - если myRole='you'     → чужой флаг это hide_partner
+   - если myRole='partner' → чужой флаг это hide_you
    ============================================================ */
 
 /* ============================================================
+   КЛЮЧИ СТОЛБЦОВ ДЛЯ МОЕГО/ЧУЖОГО ФЛАГА
+   ============================================================ */
+function myHideColumn() {
+  return APP.myRole === 'you' ? 'hide_you' : 'hide_partner';
+}
+
+function partnerHideColumn() {
+  return APP.myRole === 'you' ? 'hide_partner' : 'hide_you';
+}
+
+/* ============================================================
    ЗАГРУЗКА КЛИЕНТА
-   ============================================================
-   Динамический import() грузим только если ключи заданы.
-   Один раз — сохраняем Promise в APP.supabaseLoading,
-   чтобы повторные вызовы не запускали загрузку заново.
    ============================================================ */
 function initSupabaseAsync() {
   if (!HAS_SUPABASE) return Promise.resolve(null);
@@ -47,16 +61,11 @@ function initSupabaseAsync() {
 
 /* ============================================================
    ЗАГРУЗКА ДАННЫХ ПАРЫ
-   ============================================================
-   Тянет метаданные пары + все голоса. Заменяет APP.state.votes
-   на полученные с сервера. Сохраняет локально.
-   Возвращает true, если удалось.
    ============================================================ */
 async function loadFromSupabase() {
   if (!APP.supabaseClient || !APP.coupleId) return false;
 
   try {
-    /* --- Метаданные пары --- */
     const coupleRes = await APP.supabaseClient
       .from('couples')
       .select('*')
@@ -66,11 +75,23 @@ async function loadFromSupabase() {
     if (coupleRes.error || !coupleRes.data) return false;
 
     const couple = coupleRes.data;
+
     APP.state.names = couple.names || APP.state.names;
     APP.state.startDate = couple.start_date || APP.state.startDate;
-    APP.state.openMode = !!couple.open_mode;
 
-    /* --- Голоса --- */
+    /* Читаем флаг партнёра — тот столбец, который НЕ мой */
+    const partnerCol = partnerHideColumn();
+    APP.state.partnerHideFlag = !!couple[partnerCol];
+
+    /* Мой флаг тоже восстанавливаем с сервера — на случай,
+       если я переустановил приложение, а флаг уже был включён */
+    const myCol = myHideColumn();
+    const serverMyFlag = !!couple[myCol];
+    if (serverMyFlag !== APP.state.hideMyVotes) {
+      APP.state.hideMyVotes = serverMyFlag;
+    }
+
+    /* Голоса */
     const votesRes = await APP.supabaseClient
       .from('votes')
       .select('*')
@@ -97,10 +118,6 @@ async function loadFromSupabase() {
 
 /* ============================================================
    ОТПРАВКА ГОЛОСА
-   ============================================================
-   Upsert (insert или update) одной записи.
-   onConflict — по (couple_id, date, role), чтобы повторный
-   голос в тот же день просто перезаписал существующий.
    ============================================================ */
 async function pushVoteToSupabase(date, role, value) {
   if (!APP.supabaseClient || !APP.coupleId) return false;
@@ -128,21 +145,59 @@ async function pushVoteToSupabase(date, role, value) {
 /* ============================================================
    ОБНОВЛЕНИЕ МЕТАДАННЫХ ПАРЫ
    ============================================================
-   Используется при смене имён, openMode, startDate.
+   Отправляем на сервер:
+   - names
+   - start_date
+   - СВОЙ столбец флага скрытия (только свой, не чужой!)
+
+   Другой столбец не трогаем — за него отвечает партнёр.
    ============================================================ */
 async function pushCoupleMeta() {
   if (!APP.supabaseClient || !APP.coupleId) return false;
 
   try {
+    const myCol = myHideColumn();
+
+    const payload = {
+      id: APP.coupleId,
+      names: APP.state.names,
+      start_date: APP.state.startDate,
+      updated_at: new Date().toISOString()
+    };
+
+    /* Устанавливаем только свой столбец */
+    payload[myCol] = !!APP.state.hideMyVotes;
+
     const res = await APP.supabaseClient
       .from('couples')
-      .upsert({
-        id: APP.coupleId,
-        names: APP.state.names,
-        start_date: APP.state.startDate,
-        open_mode: APP.state.openMode,
-        updated_at: new Date().toISOString()
-      });
+      .upsert(payload);
+
+    return !res.error;
+  } catch (e) {
+    return false;
+  }
+}
+
+/* ============================================================
+   ОБНОВЛЕНИЕ ТОЛЬКО ФЛАГА СКРЫТИЯ
+   ============================================================
+   Отдельная функция для togglePrivacy, чтобы не перезаписывать
+   лишние поля (например, names — если партнёр изменил имена,
+   а я одновременно меняю флаг, я их не затрону).
+   ============================================================ */
+async function pushMyHideFlag() {
+  if (!APP.supabaseClient || !APP.coupleId) return false;
+
+  try {
+    const myCol = myHideColumn();
+    const update = {};
+    update[myCol] = !!APP.state.hideMyVotes;
+    update.updated_at = new Date().toISOString();
+
+    const res = await APP.supabaseClient
+      .from('couples')
+      .update(update)
+      .eq('id', APP.coupleId);
 
     return !res.error;
   } catch (e) {
@@ -153,21 +208,27 @@ async function pushCoupleMeta() {
 /* ============================================================
    СОЗДАНИЕ ПАРЫ
    ============================================================
-   Вставляет новую строку в таблицу couples. Если пара с таким
-   кодом уже существует — insert вернёт ошибку, и мы вернём false.
+   Оба столбца флагов создаются со значением false.
    ============================================================ */
 async function createCoupleInSupabase(code) {
   if (!APP.supabaseClient) return false;
 
   try {
+    const myCol = myHideColumn();
+
+    const payload = {
+      id: code,
+      names: APP.state.names,
+      start_date: APP.state.startDate,
+      hide_you: false,
+      hide_partner: false
+    };
+
+    payload[myCol] = !!APP.state.hideMyVotes;
+
     const res = await APP.supabaseClient
       .from('couples')
-      .insert({
-        id: code,
-        names: APP.state.names,
-        start_date: APP.state.startDate,
-        open_mode: false
-      });
+      .insert(payload);
 
     return !res.error;
   } catch (e) {
@@ -177,8 +238,6 @@ async function createCoupleInSupabase(code) {
 
 /* ============================================================
    ПРОВЕРКА СУЩЕСТВОВАНИЯ ПАРЫ
-   ============================================================
-   Возвращает true, если пара с таким кодом есть.
    ============================================================ */
 async function checkCoupleExists(code) {
   if (!APP.supabaseClient) return false;
@@ -198,10 +257,6 @@ async function checkCoupleExists(code) {
 
 /* ============================================================
    ЗАЛИВКА ЛОКАЛЬНЫХ ГОЛОСОВ НА СЕРВЕР
-   ============================================================
-   Когда пользователь создаёт пару, все оценки, что он ставил
-   до этого в локальном режиме, нужно перенести на сервер.
-   Иначе при подключении партнёра они пропадут.
    ============================================================ */
 async function syncAllLocalVotesToSupabase() {
   if (!APP.supabaseClient || !APP.coupleId) return;
@@ -217,25 +272,17 @@ async function syncAllLocalVotesToSupabase() {
 
   try {
     await Promise.all(promises);
-  } catch (e) { /* игнорируем — важен сам факт попытки */ }
+  } catch (e) { /* игнорируем */ }
 
   await pushCoupleMeta();
 }
 
 /* ============================================================
    ПОДПИСКА НА REALTIME
-   ============================================================
-   Слушаем изменения в двух таблицах:
-   - votes, где couple_id = наш код
-   - couples, где id = наш код
-
-   Всё, что приходит, применяется к APP.state через
-   handleRealtimeVote / handleRealtimeCouple.
    ============================================================ */
 function subscribeRealtime() {
   if (!APP.supabaseClient || !APP.coupleId) return;
 
-  /* Отписываемся от предыдущего канала, если был */
   if (APP.realtimeChannel) {
     try {
       APP.supabaseClient.removeChannel(APP.realtimeChannel);
@@ -275,7 +322,7 @@ function subscribeRealtime() {
 }
 
 /* ============================================================
-   ОБРАБОТЧИКИ REALTIME-СОБЫТИЙ
+   ОБРАБОТЧИКИ REALTIME
    ============================================================ */
 function handleRealtimeVote(payload) {
   try {
@@ -297,7 +344,6 @@ function handleRealtimeVote(payload) {
     recalcStats();
     saveState();
 
-    /* Перерисовка интерфейса, если функции доступны */
     if (typeof renderAll === 'function') renderAll();
     if (typeof renderAchievements === 'function') renderAchievements();
     if (typeof renderCalendar === 'function' &&
@@ -311,13 +357,17 @@ function handleRealtimeVote(payload) {
       renderChart();
     }
 
-    /* Уведомление, если это партнёр проголосовал */
-    if (role === 'partner' && APP.myRole === 'you') {
+    if (role === 'partner' && APP.myRole === 'you' && !getPartnerHideFlag()) {
       if (typeof showToast === 'function') {
         showToast('Партнёр поставил оценку ' + value + ' 💕');
       }
     }
-  } catch (e) { /* не роняем приложение */ }
+    if (role === 'you' && APP.myRole === 'partner' && !getPartnerHideFlag()) {
+      if (typeof showToast === 'function') {
+        showToast('Партнёр поставил оценку ' + value + ' 💕');
+      }
+    }
+  } catch (e) { /* игнорируем */ }
 }
 
 function handleRealtimeCouple(payload) {
@@ -327,19 +377,39 @@ function handleRealtimeCouple(payload) {
 
     APP.state.names = row.names || APP.state.names;
     APP.state.startDate = row.start_date || APP.state.startDate;
-    APP.state.openMode = !!row.open_mode;
+
+    /* Флаг партнёра — из чужого столбца */
+    const partnerCol = partnerHideColumn();
+    const newPartnerHide = !!row[partnerCol];
+
+    /* Флаг мой — из своего столбца. Если он пришёл другим
+       (например, я включил на другом устройстве) — применяем. */
+    const myCol = myHideColumn();
+    const newMyHide = !!row[myCol];
+
+    let changed = false;
+
+    if (newPartnerHide !== APP.state.partnerHideFlag) {
+      APP.state.partnerHideFlag = newPartnerHide;
+      changed = true;
+    }
+    if (newMyHide !== APP.state.hideMyVotes) {
+      APP.state.hideMyVotes = newMyHide;
+      changed = true;
+    }
 
     saveState();
 
     if (typeof renderAll === 'function') renderAll();
     if (typeof renderProfile === 'function') renderProfile();
+    if (changed && typeof renderCoupleState === 'function') {
+      renderCoupleState();
+    }
   } catch (e) { /* игнорируем */ }
 }
 
 /* ============================================================
    ОТПИСКА
-   ============================================================
-   Вызывается при отключении пары или перед закрытием.
    ============================================================ */
 function unsubscribeRealtime() {
   if (!APP.supabaseClient || !APP.realtimeChannel) return;
@@ -352,34 +422,27 @@ function unsubscribeRealtime() {
 }
 
 /* ============================================================
-   ПРОВЕРКА МОЕЙ РОЛИ В ПАРЕ
+   ОПРЕДЕЛЕНИЕ МОЕЙ РОЛИ В ПАРЕ
    ============================================================
-   Роль определяется так:
-   - Если это устройство создавало пару (сохранили свой myId
-     в ключе creator_of_<code>) — роль 'you'.
-   - Иначе — роль 'partner'.
-
-   Это нужно, чтобы два устройства одной пары писали свои
-   оценки в разные поля (you / partner).
+   ВАЖНО: роль должна быть определена ДО первого вызова
+   myHideColumn() / partnerHideColumn() / loadFromSupabase(),
+   иначе мы будем читать/писать не тот столбец.
    ============================================================ */
 function determineMyRole(code) {
   const creator = storageGet(CONFIG.STORAGE.creator + code);
 
-  /* Если это устройство создавало пару — роль 'you' */
   if (creator && creator === APP.myId) {
     APP.myRole = 'you';
     return;
   }
 
-  /* Если пару создавал кто-то другой и мы знаем его id — роль 'partner' */
   if (creator && creator !== 'other-device') {
     APP.myRole = 'partner';
     return;
   }
 
-  /* Если информации о создателе нет — определяем по первому свободному слоту.
-     Смотрим на сегодняшний день: если в нём уже есть you, значит партнёр поставил
-     оценку со своей стороны, и мы должны быть partner. И наоборот. */
+  /* Информации о создателе нет — определяем по первому
+     свободному слоту в сегодняшнем дне */
   const today = APP.state.votes[todayStr()];
   if (today) {
     if (today.you && !today.partner) {
@@ -394,6 +457,5 @@ function determineMyRole(code) {
     }
   }
 
-  /* Fallback — не можем определить, ставим 'partner' */
   APP.myRole = 'partner';
 }
