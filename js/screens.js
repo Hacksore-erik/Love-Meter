@@ -2,71 +2,146 @@
    SCREENS — логика экранов
    ============================================================
    Файл отвечает за отрисовку и интерактив четырёх экранов:
-   - Главная: сердце + голосование
+   - Главная: сердце партнёра + голосование + блок «Общее состояние»
    - Награды: достижения
    - Календарь
    - Динамика: график + сравнение + рекорды
 
-   Все функции вызываются из app.js через renderAll() или
-   напрямую через switchTab(). Файл не инициализирует
-   приложение, он только рисует.
+   Изменения в этой версии:
+   - updateHeart() показывает состояние ПАРТНЁРА
+   - renderCoupleState() — новый блок внизу главного экрана
+   - renderCalendar/renderChart учитывают флаги скрытия
    ============================================================ */
 
 
 /* ============================================================
-   ГЛАВНАЯ — СЕРДЦЕ
+   ГЛАВНАЯ — СЕРДЦЕ (состояние партнёра)
    ============================================================ */
-
-/* Обновление сердца: заполнение + процент + статус */
 function updateHeart(animated) {
   const fill = $('heartFill');
   const pctEl = $('heartPercent');
   const statusEl = $('heartStatus');
   if (!fill || !pctEl || !statusEl) return;
 
-  const pct = computePercent();
+  const partner = computePartnerPercent();
+  const pct = partner.percent;
   const y = 195 - (pct / 100) * 190;
 
-  /* Плавный переход только когда значение меняется */
   fill.style.transition = animated
     ? 'y 1s cubic-bezier(0.4, 0, 0.2, 1)'
     : 'none';
 
   fill.setAttribute('y', y);
-  pctEl.textContent = pct + '%';
 
-  /* Статусный текст и цвет в зависимости от уровня */
-  let status, color;
-  if (pct === 0) {
-    status = 'Начните отмечать настроение';
+  let status, color, percentText;
+
+  if (partner.hidden) {
+    /* Партнёр скрыл свои оценки */
+    percentText = '🔒';
+    status = 'Партнёр скрыл свои оценки';
     color = '#8e8e93';
-  } else if (pct <= 20) {
-    status = 'Нужен тёплый разговор 💬';
+  } else if (!partner.hasData) {
+    /* Партнёр не голосовал за 7 дней */
+    percentText = '0%';
+    status = 'Партнёр пока не отмечал настроение';
     color = '#8e8e93';
-  } else if (pct <= 40) {
-    status = 'Немного прохладно ❄️';
-    color = '#5e7dff';
-  } else if (pct <= 60) {
-    status = 'Спокойно и стабильно 💜';
-    color = '#a56bff';
-  } else if (pct <= 80) {
-    status = 'Между вами тепло 💗';
-    color = '#ff5e7d';
   } else {
-    status = 'Любовь пылает! ❤️‍🔥';
-    color = '#ff2d55';
+    percentText = pct + '%';
+
+    /* Базовый статус по проценту */
+    if (pct <= 20) { status = 'Нужен тёплый разговор 💬'; color = '#8e8e93'; }
+    else if (pct <= 40) { status = 'Немного прохладно ❄️'; color = '#5e7dff'; }
+    else if (pct <= 60) { status = 'Спокойно и стабильно 💜'; color = '#a56bff'; }
+    else if (pct <= 80) { status = 'Между вами тепло 💗'; color = '#ff5e7d'; }
+    else { status = 'Любовь пылает! ❤️‍🔥'; color = '#ff2d55'; }
+
+    /* Если партнёр голосовал не сегодня — уточняем */
+    if (!partner.votedToday && partner.lastVoteDaysAgo !== null) {
+      const days = partner.lastVoteDaysAgo;
+      let daysText;
+      if (days === 1) daysText = 'вчера';
+      else if (days === 2) daysText = '2 дня назад';
+      else if (days < 7) daysText = days + ' дней назад';
+      else daysText = 'давно';
+
+      status = status + ' • последний голос ' + daysText;
+    }
   }
 
+  pctEl.textContent = percentText;
   statusEl.textContent = status;
   statusEl.style.color = color;
 }
 
 
 /* ============================================================
+   ГЛАВНАЯ — БЛОК «ОБЩЕЕ СОСТОЯНИЕ ПАРЫ»
+   ============================================================
+   Показывает среднее по обоим партнёрам за 7 или 30 дней.
+   Переключатель периода — два таба внутри блока.
+   ============================================================ */
+function renderCoupleState() {
+  const percentEl = $('coupleStatePercent');
+  const statusEl = $('coupleStateStatus');
+  const segBtns = document.querySelectorAll('.couple-state-period');
+  const ringEl = $('coupleStateRing');
+
+  if (!percentEl || !statusEl) return;
+
+  /* Подсветка активного периода */
+  segBtns.forEach(function (btn) {
+    btn.classList.toggle('active', btn.dataset.period === APP.coupleStatePeriod);
+  });
+
+  const result = computeCouplePercent(APP.coupleStatePeriod);
+
+  percentEl.textContent = result.hasData ? (result.percent + '%') : '—';
+
+  /* Цвет кольца в зависимости от процента */
+  if (ringEl) {
+    let ringColor = 'var(--text-soft)';
+    if (result.hasData) {
+      if (result.percent <= 20) ringColor = '#b8bcc7';
+      else if (result.percent <= 40) ringColor = '#7aa7ff';
+      else if (result.percent <= 60) ringColor = '#b98aff';
+      else if (result.percent <= 80) ringColor = '#ff7da1';
+      else ringColor = '#ff2d55';
+    }
+    ringEl.style.borderColor = ringColor;
+  }
+
+  /* Статусный текст */
+  let status;
+  if (!result.hasData) {
+    if (result.anyHidden) {
+      status = 'Недостаточно данных — часть оценок скрыта';
+    } else {
+      status = 'Пока нет оценок за этот период';
+    }
+  } else {
+    if (result.percent <= 20) status = 'Нужен тёплый разговор 💬';
+    else if (result.percent <= 40) status = 'Немного прохладно ❄️';
+    else if (result.percent <= 60) status = 'Спокойно и стабильно 💜';
+    else if (result.percent <= 80) status = 'Между вами тепло 💗';
+    else status = 'Любовь пылает! ❤️‍🔥';
+
+    /* Пояснение про скрытие */
+    if (result.iHide && result.partnerHide) {
+      status = status + ' • часть оценок скрыта у обоих';
+    } else if (result.iHide) {
+      status = status + ' • твои оценки скрыты';
+    } else if (result.partnerHide) {
+      status = status + ' • оценки партнёра скрыты';
+    }
+  }
+
+  statusEl.textContent = status;
+}
+
+
+/* ============================================================
    ГЛАВНАЯ — ГОЛОСОВАНИЕ
    ============================================================ */
-
-/* Отрисовка состояния кнопок голосования */
 function renderVoteButtons() {
   const myVote = getTodayVote();
   const btns = document.querySelectorAll('.vote-btn');
@@ -87,13 +162,13 @@ function renderVoteButtons() {
 
   if (myVote) {
     question.textContent = 'Спасибо! Партнёр тоже может проголосовать 💕';
-    hint.textContent = 'Ваш голос: ' + myVote + ' из 5';
+    hint.textContent = 'Твой голос: ' + myVote + ' из 5';
     btns.forEach(function (b) {
       b.disabled = true;
       b.style.opacity = '0.7';
     });
   } else {
-    question.textContent = 'Как вы себя чувствуете сегодня в отношениях?';
+    question.textContent = 'Как ты себя чувствуешь сегодня в отношениях?';
     hint.textContent = 'Можно менять один раз в день';
     btns.forEach(function (b) {
       b.disabled = false;
@@ -102,11 +177,10 @@ function renderVoteButtons() {
   }
 }
 
-/* Обработчик клика по кнопке голосования */
 async function handleVote(vote) {
   try {
     if (getTodayVote()) {
-      showToast('Сегодня вы уже голосовали 💕');
+      showToast('Сегодня ты уже голосовал(а) 💕');
       return;
     }
 
@@ -117,7 +191,6 @@ async function handleVote(vote) {
     recalcStats();
     saveState();
 
-    /* Анимация кнопок до выбранной */
     const btns = document.querySelectorAll('.vote-btn');
     btns.forEach(function (btn, i) {
       const v = i + 1;
@@ -130,7 +203,6 @@ async function handleVote(vote) {
       }
     });
 
-    /* Конфетти и вибрация при пятёрке */
     if (vote === 5) {
       spawnConfetti();
       if (navigator.vibrate) {
@@ -144,9 +216,9 @@ async function handleVote(vote) {
 
     updateHeart(true);
     renderVoteButtons();
+    renderCoupleState();
     renderAll();
 
-    /* Отправка на сервер */
     if (APP.supabaseClient && APP.coupleId) {
       const ok = await pushVoteToSupabase(key, APP.myRole, vote);
       if (ok) {
@@ -164,7 +236,7 @@ async function handleVote(vote) {
 
 
 /* ============================================================
-   КОНФЕТТИ — 14 частиц, вылетают вверх
+   КОНФЕТТИ
    ============================================================ */
 function spawnConfetti() {
   try {
@@ -192,7 +264,6 @@ function spawnConfetti() {
 
       document.body.appendChild(el);
 
-      /* Убираем из DOM после окончания анимации */
       setTimeout(function () {
         try { el.remove(); } catch (e) {}
       }, 2000);
@@ -202,7 +273,7 @@ function spawnConfetti() {
 
 
 /* ============================================================
-   НАГРАДЫ — достижения
+   НАГРАДЫ
    ============================================================ */
 function renderAchievements() {
   const grid = $('achievementsGrid');
@@ -237,7 +308,6 @@ function renderAchievements() {
 
   grid.innerHTML = html;
 
-  /* Обновляем сводку сверху */
   const sub = $('awardsSubtitle');
   if (sub) {
     sub.textContent = 'Открыто ' + unlockedCount + ' из ' + CONFIG.ACHIEVEMENTS.length;
@@ -249,42 +319,39 @@ function renderAchievements() {
   const sm = $('statMedals');
   if (sm) sm.textContent = unlockedCount;
 }
+
+
 /* ============================================================
    КАЛЕНДАРЬ
    ============================================================ */
-
-/* Инициализация календаря — выставляем текущий месяц */
 function initCalendar() {
   const now = new Date();
   APP.calYear = now.getFullYear();
   APP.calMonth = now.getMonth();
 }
 
-/* Отрисовка календаря */
 function renderCalendar() {
   const label = $('calMonthLabel');
   const grid = $('calGrid');
   if (!label || !grid) return;
 
-  /* Заголовок месяца */
   label.textContent = MONTHS_FULL[APP.calMonth] + ' ' + APP.calYear;
 
-  /* Сколько дней в месяце и с какого дня недели начинается */
   const firstDay = new Date(APP.calYear, APP.calMonth, 1);
   const daysInMonth = new Date(APP.calYear, APP.calMonth + 1, 0).getDate();
 
-  /* Приводим воскресенье (0) к 6, понедельник (1) к 0 */
   let startDow = firstDay.getDay() - 1;
   if (startDow < 0) startDow = 6;
 
+  const iHide = getMyHideFlag();
+  const partnerHide = getPartnerHideFlag();
+
   let html = '';
 
-  /* Пустые ячейки до первого числа */
   for (let i = 0; i < startDow; i++) {
     html += '<div class="cal-cell" aria-hidden="true"></div>';
   }
 
-  /* Дни месяца */
   for (let d = 1; d <= daysInMonth; d++) {
     const dateKey = APP.calYear + '-' + pad(APP.calMonth + 1) + '-' + pad(d);
     const v = APP.state.votes[dateKey];
@@ -293,18 +360,26 @@ function renderCalendar() {
     let bothClass = '';
 
     if (v) {
-      let moodVal = 0;
-      if (v.you && v.partner) {
-        moodVal = Math.round((v.you + v.partner) / 2);
-        bothClass = ' both';
-      } else if (v.you) {
-        moodVal = v.you;
-      } else if (v.partner) {
-        moodVal = v.partner;
-      }
+      /* Собираем видимые оценки — те, что не скрыты */
+      const visibleVals = [];
+      if (v.you && !iHide) visibleVals.push(v.you);
+      if (v.partner && !partnerHide) visibleVals.push(v.partner);
 
-      if (moodVal > 0) {
+      if (visibleVals.length) {
+        const moodVal = Math.round(avg(visibleVals));
+
+        /* Кольцо — если в этот день есть оба голоса и оба не скрыты */
+        if (v.you && v.partner && !iHide && !partnerHide) {
+          bothClass = ' both';
+        } else if (v.you && v.partner && (iHide || partnerHide)) {
+          /* Оба голосовали, но что-то скрыто — показываем особым классом */
+          bothClass = ' both hidden-some';
+        }
+
         circleStyle = 'background:' + CONFIG.MOODS[moodVal - 1] + ';color:#fff;';
+      } else if (v.you || v.partner) {
+        /* Есть данные, но все скрыты */
+        circleStyle = 'background:#f2f2f7;color:#8e8e93;';
       }
     }
 
@@ -324,22 +399,29 @@ function renderCalendar() {
   renderInsight();
 }
 
-/* Обработчик тапа по ячейке календаря */
 function onCalCellClick(dateKey, day) {
   const v = APP.state.votes[dateKey];
   const monthName = MONTHS_GENITIVE[APP.calMonth];
 
-  if (v) {
-    const parts = [];
-    if (v.you) parts.push('ты ' + v.you);
-    if (v.partner) parts.push('партнёр ' + v.partner);
-    showToast(day + ' ' + monthName + ': ' + parts.join(', '));
-  } else {
+  if (!v) {
     showToast(day + ' ' + monthName + ': нет данных');
+    return;
   }
+
+  const iHide = getMyHideFlag();
+  const partnerHide = getPartnerHideFlag();
+
+  const parts = [];
+  if (v.you) {
+    parts.push(iHide ? 'ты •••' : 'ты ' + v.you);
+  }
+  if (v.partner) {
+    parts.push(partnerHide ? 'партнёр •••' : 'партнёр ' + v.partner);
+  }
+
+  showToast(day + ' ' + monthName + ': ' + parts.join(', '));
 }
 
-/* Инсайт месяца — три строки под календарём */
 function renderInsight() {
   const el = $('insightText');
   if (!el) return;
@@ -364,7 +446,6 @@ function renderInsight() {
   el.innerHTML = html;
 }
 
-/* Навигация по месяцам */
 function prevMonth() {
   APP.calMonth--;
   if (APP.calMonth < 0) {
@@ -387,8 +468,6 @@ function nextMonth() {
 /* ============================================================
    ДИНАМИКА — ГРАФИК
    ============================================================ */
-
-/* Обновление графика для текущего периода */
 function renderChart() {
   const svg = $('chartSvg');
   if (!svg) return;
@@ -396,7 +475,6 @@ function renderChart() {
   const points = getChartData(APP.currentPeriod);
   const validPoints = points.filter(function (p) { return p.value !== null; });
 
-  /* Среднее значение за период — в заголовке карточки */
   const avgVal = validPoints.length
     ? avg(validPoints.map(function (p) { return p.value; }))
     : 0;
@@ -406,10 +484,8 @@ function renderChart() {
     avgEl.textContent = validPoints.length ? avgVal.toFixed(1) : '—';
   }
 
-  /* Дельта — сравнение первой и второй половины периода */
   renderDelta(validPoints);
 
-  /* Размеры SVG-вьюбокса */
   const W = 320;
   const H = 180;
   const padL = 28;
@@ -419,11 +495,9 @@ function renderChart() {
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
 
-  /* Сколько точек и расстояние между ними */
   const n = points.length;
   const stepX = n > 1 ? plotW / (n - 1) : plotW;
 
-  /* Преобразуем значения (1..5) в координаты (y в пикселях) */
   const mapped = points.map(function (p, i) {
     return {
       x: padL + i * stepX,
@@ -439,7 +513,6 @@ function renderChart() {
 
   let c = '';
 
-  /* Сетка: горизонтальные линии на 1, 3, 5 */
   [1, 3, 5].forEach(function (v) {
     const y = padT + plotH - ((v - 1) / 4) * plotH;
     c += '<line x1="' + padL + '" y1="' + y + '" '
@@ -449,7 +522,6 @@ function renderChart() {
        + 'font-size="9" fill="#8e8e93" text-anchor="end">' + v + '</text>';
   });
 
-  /* Градиент для заливки под кривой */
   c += '<defs>'
      + '<linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">'
      + '<stop offset="0%" stop-color="rgba(255,45,85,0.25)"/>'
@@ -457,7 +529,6 @@ function renderChart() {
      + '</linearGradient>'
      + '</defs>';
 
-  /* Кривая и заливка (только если есть 2+ точек) */
   if (validMapped.length >= 2) {
     const pathD = catmullRomPath(validMapped);
     const areaD = pathD
@@ -474,13 +545,11 @@ function renderChart() {
        + 'r="4" fill="#ff2d55"/>';
   }
 
-  /* Точки данных */
   validMapped.forEach(function (p) {
     c += '<circle class="chart-dot" cx="' + p.x + '" cy="' + p.y + '" '
        + 'r="3" fill="#fff" stroke="#ff2d55" stroke-width="2"/>';
   });
 
-  /* Невидимые прямоугольники для интерактива (hover/tap) */
   mapped.forEach(function (p) {
     if (p.y === null) return;
     c += '<rect class="chart-hover" '
@@ -494,15 +563,11 @@ function renderChart() {
 
   svg.innerHTML = c;
 
-  /* Подписи по оси X — прореживаем */
   renderXLabels(mapped);
-
-  /* Сравнение и рекорды */
   renderCompare();
   renderRecords();
 }
 
-/* Плашка дельты — сравнение половин периода */
 function renderDelta(validPoints) {
   const deltaEl = $('chartDelta');
   if (!deltaEl) return;
@@ -540,19 +605,14 @@ function renderDelta(validPoints) {
   }
 }
 
-/* Подписи по оси X */
 function renderXLabels(mapped) {
   const el = $('chartXLabels');
   if (!el) return;
 
   let step;
-  if (APP.currentPeriod === 'month') {
-    step = 5;
-  } else if (APP.currentPeriod === 'year') {
-    step = 2;
-  } else {
-    step = 1;
-  }
+  if (APP.currentPeriod === 'month') step = 5;
+  else if (APP.currentPeriod === 'year') step = 2;
+  else step = 1;
 
   let html = '';
   for (let i = 0; i < mapped.length; i += step) {
@@ -561,7 +621,6 @@ function renderXLabels(mapped) {
   el.innerHTML = html;
 }
 
-/* Построение плавной кривой через точки (Catmull-Rom → cubic bezier) */
 function catmullRomPath(points) {
   if (points.length < 2) return '';
 
@@ -586,7 +645,6 @@ function catmullRomPath(points) {
   return d;
 }
 
-/* Интерактив на графике — tooltip */
 function onChartHover(el) {
   try {
     const tooltip = $('chartTooltip');
@@ -627,35 +685,36 @@ function renderCompare() {
   /* Моё среднее */
   const youEl = $('compareYouVal');
   if (youEl) {
-    youEl.textContent = stats.youValues.length
-      ? stats.youAvg.toFixed(1)
-      : '—';
+    if (stats.iHide) {
+      youEl.textContent = '•••';
+    } else {
+      youEl.textContent = stats.youValues.length
+        ? stats.youAvg.toFixed(1)
+        : '—';
+    }
   }
 
-  /* Среднее партнёра — с учётом приватности */
+  /* Среднее партнёра */
   const partnerRow = $('comparePartner');
   const partnerValEl = $('comparePartnerVal');
 
-  if (APP.state.openMode) {
-    if (partnerRow) partnerRow.classList.remove('compare-blur');
-    if (partnerValEl) {
+  if (partnerRow && partnerValEl) {
+    if (stats.partnerHide) {
+      partnerRow.classList.add('compare-blur');
+      partnerValEl.textContent = stats.partnerValues.length ? '•••' : '—';
+    } else {
+      partnerRow.classList.remove('compare-blur');
       partnerValEl.textContent = stats.partnerValues.length
         ? stats.partnerAvg.toFixed(1)
         : '—';
     }
-  } else {
-    if (partnerRow) partnerRow.classList.add('compare-blur');
-    if (partnerValEl) {
-      partnerValEl.textContent = stats.partnerValues.length ? '•••' : '—';
-    }
   }
 
-  /* Мини-спарклайны */
-  drawSparkline('sparkYou', stats.youValues, '#ff2d55');
-  drawSparkline('sparkPartner', stats.partnerValues, '#5e7dff');
+  /* Спарклайны — если скрыто, не рисуем */
+  drawSparkline('sparkYou', stats.iHide ? [] : stats.youValues, '#ff2d55');
+  drawSparkline('sparkPartner', stats.partnerHide ? [] : stats.partnerValues, '#5e7dff');
 }
 
-/* Рисуем маленький график-спарклайн шириной 60px */
 function drawSparkline(id, vals, color) {
   const svg = $(id);
   if (!svg) return;
@@ -716,40 +775,32 @@ function renderRecords() {
   }
 }
 
-/* '2025-11-22' → '22.11.2025' */
 function formatShortDate(key) {
   if (!key) return '—';
   const d = parseDate(key);
   return d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear();
 }
+
+
 /* ============================================================
    ОБЩАЯ ФУНКЦИЯ — ПЕРЕРИСОВКА ГЛАВНОЙ
-   ============================================================
-   Вызывается всякий раз, когда меняется state:
-   - при голосовании
-   - при получении realtime-обновления от партнёра
-   - при загрузке данных с сервера
-   - при init()
    ============================================================ */
 function renderAll() {
   try {
     updateHeart(true);
     renderVoteButtons();
+    renderCoupleState();
 
-    /* Стрик в шапке */
     const sp = $('streakValue');
     if (sp) sp.textContent = APP.state.streak;
 
-    /* Имя пары в шапке */
     const sub = $('headerSubtitle');
     if (sub) sub.textContent = APP.state.names;
 
-    /* Имя пары в профиле */
     const pn = $('profileNames');
     if (pn) pn.textContent = APP.state.names;
 
-    /* Значение в пункте «Имена пары» */
     const nbv = $('namesBtnValue');
     if (nbv) nbv.textContent = APP.state.names;
-  } catch (e) { /* не роняем приложение */ }
+  } catch (e) { /* игнорируем */ }
 }
