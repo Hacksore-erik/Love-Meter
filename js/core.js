@@ -251,7 +251,6 @@ function getPartnerHideFlag() {
 }
 
 /* ---------- РАСЧЁТЫ ДЛЯ ЭКРАНОВ ---------- */
-
 function computePartnerPercent() {
   const result = {
     percent: 0,
@@ -264,6 +263,7 @@ function computePartnerPercent() {
 
   if (result.hidden) return result;
 
+  const partnerKey = APP.myRole === 'you' ? 'partner' : 'you';
   const today = new Date();
   const partnerVals = [];
   let lastValue = null;
@@ -275,9 +275,9 @@ function computePartnerPercent() {
     const key = fmtDate(d);
     const v = APP.state.votes[key];
 
-    if (v && v.partner) {
-      partnerVals.push(v.partner);
-      if (!lastDate) { lastDate = d; lastValue = v.partner; }
+    if (v && v[partnerKey]) {
+      partnerVals.push(v[partnerKey]);
+      if (!lastDate) { lastDate = d; lastValue = v[partnerKey]; }
       if (i === 0) result.votedToday = true;
     }
   }
