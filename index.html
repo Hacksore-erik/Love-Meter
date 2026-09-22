@@ -195,13 +195,13 @@
         <h3 class="compare-title">Сравнение</h3>
         <div class="compare-row">
           <span class="compare-indicator" style="background:var(--accent)"></span>
-          <span class="compare-label">Ты</span>
+          <span class="compare-label" id="compareYouLabel">Ты</span>
           <svg class="compare-spark" id="sparkYou" width="60" height="20" aria-hidden="true"></svg>
           <span class="compare-value" id="compareYouVal">—</span>
         </div>
         <div class="compare-row" id="comparePartner">
           <span class="compare-indicator" style="background:var(--partner)"></span>
-          <span class="compare-label">Партнёр</span>
+          <span class="compare-label" id="comparePartnerLabel">Партнёр</span>
           <svg class="compare-spark" id="sparkPartner" width="60" height="20" aria-hidden="true"></svg>
           <span class="compare-value" id="comparePartnerVal">—</span>
         </div>
@@ -235,6 +235,24 @@
         <div class="profile-sub" id="profileSub">—</div>
       </div>
 
+      <!-- ============ БЛОК ИМЁН ============ -->
+      <div class="names-card">
+        <div class="names-row">
+          <div class="names-icon names-icon-you" aria-hidden="true">🧑</div>
+          <div class="names-info">
+            <div class="names-label">Ты</div>
+            <div class="names-value" id="profileYouName">Ты</div>
+          </div>
+        </div>
+        <div class="names-row">
+          <div class="names-icon names-icon-partner" aria-hidden="true">👤</div>
+          <div class="names-info">
+            <div class="names-label">Партнёр</div>
+            <div class="names-value" id="profilePartnerName">Партнёр</div>
+          </div>
+        </div>
+      </div>
+
       <div class="settings-group">
         <button type="button" class="settings-item" id="coupleBtn">
           <span class="settings-icon">🔗</span>
@@ -244,8 +262,8 @@
         </button>
         <button type="button" class="settings-item" id="namesBtn">
           <span class="settings-icon">✏️</span>
-          <span class="settings-label">Имена пары</span>
-          <span class="settings-value" id="namesBtnValue">Моя пара</span>
+          <span class="settings-label">Имена</span>
+          <span class="settings-value" id="namesBtnValue">Изменить</span>
           <span class="settings-chevron">›</span>
         </button>
         <button type="button" class="settings-item" id="exportPdfBtn">
@@ -277,7 +295,7 @@
         <button type="button" class="settings-item" id="aboutBtn">
           <span class="settings-icon">ℹ️</span>
           <span class="settings-label">О приложении</span>
-          <span class="settings-value">v1.1</span>
+          <span class="settings-value">v1.2</span>
           <span class="settings-chevron">›</span>
         </button>
         <button type="button" class="settings-item" id="resetBtn">
