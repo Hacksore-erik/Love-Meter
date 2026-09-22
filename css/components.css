@@ -1,6 +1,13 @@
 /* ============================================================
    COMPONENTS — карточки, сердце, голосование, календарь,
-   график, модалка, toast, PDF, журнал ошибок, блок состояния пары
+   график, модалка, toast, PDF, журнал ошибок, имена, блок пары
+   ============================================================
+   Изменения в этой версии:
+   - Стили блока имён (.names-card)
+   - Починка #pdfTemplate: убран left: -10000px, теперь
+     элемент лежит под всем контентом с opacity: 0.
+     Это критично для html2canvas — он рендерит только
+     видимые (в т.ч. прозрачные) элементы.
    ============================================================ */
 
 /* ============================================================
@@ -105,7 +112,6 @@
   letter-spacing: -0.2px;
 }
 
-/* Segmented поменьше — для встраивания в карточку */
 .segmented-small {
   display: flex;
   background: rgba(118, 118, 128, 0.12);
@@ -161,6 +167,72 @@
 }
 
 /* ============================================================
+   БЛОК ИМЁН В ПРОФИЛЕ
+   ============================================================ */
+.names-card {
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.names-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.names-row + .names-row {
+  border-top: 0.5px solid var(--separator);
+}
+
+.names-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.names-icon-you {
+  background: linear-gradient(135deg, #ff5e7d, #ff2d55);
+  color: #fff;
+}
+
+.names-icon-partner {
+  background: linear-gradient(135deg, #8ea2ff, #5e7dff);
+  color: #fff;
+}
+
+.names-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.names-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 2px;
+}
+
+.names-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================
    КАРТОЧКА ГОЛОСОВАНИЯ
    ============================================================ */
 .vote-card {
@@ -200,6 +272,8 @@
   position: relative;
   overflow: hidden;
   cursor: pointer;
+  border: none;
+  font-family: var(--font);
 }
 
 .vote-btn:active {
@@ -445,6 +519,8 @@
   font-weight: 500;
   padding-bottom: 2px;
   cursor: pointer;
+  border: none;
+  font-family: var(--font);
 }
 
 .cal-nav-btn:active {
@@ -487,6 +563,9 @@
   border-radius: 50%;
   transition: background var(--dur-fast) var(--ease);
   cursor: pointer;
+  border: none;
+  background: none;
+  font-family: var(--font);
 }
 
 .cal-cell:active {
@@ -527,7 +606,6 @@
               0 0 0 3.5px var(--accent-soft);
 }
 
-/* Когда оба голосовали, но часть оценок скрыта — пунктирное кольцо */
 .cal-day.both.hidden-some {
   box-shadow: 0 0 0 2px var(--card),
               0 0 0 3.5px var(--text-soft);
@@ -750,6 +828,9 @@
   font-size: 14px;
   font-weight: 600;
   flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .compare-spark {
@@ -809,7 +890,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   margin-top: 8px;
 }
 
@@ -975,11 +1056,9 @@
 .modal input {
   width: 100%;
   padding: 14px 16px;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 4px;
+  font-size: 18px;
+  font-weight: 600;
   text-align: center;
-  text-transform: uppercase;
   border: 2px solid var(--separator);
   border-radius: var(--radius-md);
   background: var(--bg);
@@ -987,6 +1066,14 @@
   margin-bottom: 12px;
   transition: border-color var(--dur) var(--ease);
   font-family: var(--font);
+  letter-spacing: 0;
+}
+
+.modal input#joinCodeInput {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
 }
 
 .modal input:focus {
@@ -1061,16 +1148,33 @@
 
 /* ============================================================
    PDF TEMPLATE
+   ============================================================
+   ВАЖНО: раньше было `left: -10000px` — html2canvas не рендерил
+   такой элемент и получался пустой PDF.
+
+   Теперь шаблон лежит под всем контентом через z-index: -1
+   и полностью прозрачен (opacity: 0). Для html2canvas он
+   "видимый" (не display: none, не за экраном), для
+   пользователя — невидим.
    ============================================================ */
 #pdfTemplate {
   position: fixed;
-  left: -10000px;
   top: 0;
+  left: 0;
   width: 794px;
   background: #ffffff;
   font-family: var(--font);
   color: var(--text);
   pointer-events: none;
+  z-index: -1;
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Класс, который включает шаблон на время генерации PDF */
+#pdfTemplate.pdf-rendering {
+  visibility: visible;
+  opacity: 1;
 }
 
 .pdf-cover {
@@ -1290,7 +1394,6 @@
   overflow: hidden;
 }
 
-/* Модалка журнала ошибок */
 .error-log-list {
   max-height: 50vh;
   overflow-y: auto;
