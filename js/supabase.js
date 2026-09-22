@@ -13,9 +13,6 @@
    Про роли:
    - 'you'     — первый, кто создал пару
    - 'partner' — второй, кто подключился
-
-   determineMyRole — асинхронная, опирается на сервер:
-   смотрит, какие слоты имён свободны, и занимает нужный.
    ============================================================ */
 
 /* ============================================================
@@ -63,20 +60,8 @@ function initSupabaseAsync() {
 
 /* ============================================================
    ОПРЕДЕЛЕНИЕ МОЕЙ РОЛИ — АСИНХРОННО
-   ============================================================
-   Логика:
-   1. Если есть метка creator_of_<code>:
-      - совпадает с моим myId → 'you'
-      - не совпадает → 'partner'
-   2. Если метки нет — спрашиваем сервер:
-      - name_you пустой, name_partner пустой → я 'you' (первый)
-      - name_you занят, name_partner пустой → я 'partner'
-      - name_you пустой, name_partner занят → я 'you'
-      - оба заняты → fallback 'partner'
-   3. Сервер недоступен → fallback 'you'.
    ============================================================ */
 async function determineMyRole(code) {
-  /* Случай 1: локальная метка */
   const creator = storageGet(CONFIG.STORAGE.creator + code);
 
   if (creator && creator === APP.myId) {
@@ -88,7 +73,6 @@ async function determineMyRole(code) {
     return;
   }
 
-  /* Случай 2: спрашиваем сервер */
   if (APP.supabaseClient) {
     try {
       const res = await APP.supabaseClient
@@ -112,19 +96,16 @@ async function determineMyRole(code) {
           return;
         }
         if (!hasYou && !hasPartner) {
-          /* Оба свободны — я первый */
           APP.myRole = 'you';
           storageSet(CONFIG.STORAGE.creator + code, APP.myId);
           return;
         }
-        /* Оба заняты — fallback */
         APP.myRole = 'partner';
         return;
       }
-    } catch (e) { /* идём в fallback */ }
+    } catch (e) { /* fallback */ }
   }
 
-  /* Случай 3: нет ни метки, ни сервера */
   APP.myRole = 'you';
 }
 
@@ -165,7 +146,6 @@ async function loadFromSupabase() {
       APP.state.hideMyVotes = serverMyFlag;
     }
 
-    /* Голоса */
     const votesRes = await APP.supabaseClient
       .from('votes')
       .select('*')
@@ -293,10 +273,6 @@ async function pushMyHideFlag() {
 
 /* ============================================================
    СОЗДАНИЕ ПАРЫ
-   ============================================================
-   Роль 'you' на этом этапе уже установлена в ui.js
-   (мы пишем APP.myRole = 'you' перед вызовом).
-   Заполняем name_you своим именем, name_partner оставляем пустым.
    ============================================================ */
 async function createCoupleInSupabase(code) {
   if (!APP.supabaseClient) return false;
