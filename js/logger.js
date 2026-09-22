@@ -1,3 +1,8 @@
+/* ============================================================
+   LOGGER — журнал ошибок LM-001…LM-031
+   Загружается ПЕРВЫМ. Все ошибки пишутся в память и в localStorage.
+   ============================================================ */
+
 const LM = (function () {
 
   const CODES = {
@@ -35,6 +40,7 @@ const LM = (function () {
   };
 
   const MAX = 30;
+  const DUMP_KEY = 'lm_error_dump';
   const log = [];
   let nextAutoCode = 100;
 
@@ -43,8 +49,10 @@ const LM = (function () {
   }
 
   function timeStr() {
-    const d = new Date();
-    return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+    try {
+      const d = new Date();
+      return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+    } catch (e) { return '--:--:--'; }
   }
 
   function escapeText(s) {
@@ -52,6 +60,14 @@ const LM = (function () {
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
+  }
+
+  /* Выгрузка журнала в localStorage — чтобы можно было прочитать даже при мёртвом UI */
+  function dumpToStorage() {
+    try {
+      const txt = toText();
+      localStorage.setItem(DUMP_KEY, txt);
+    } catch (e) { /* игнорируем — storage может быть недоступен */ }
   }
 
   function record(code, message, extra) {
@@ -76,12 +92,16 @@ const LM = (function () {
       log.push(entry);
       if (log.length > MAX) log.shift();
 
+      // Выгрузка в localStorage (последние 30 записей)
+      dumpToStorage();
+
       try {
         window.dispatchEvent(new CustomEvent('lm:error', { detail: entry }));
       } catch (e) {}
 
       showBanner(entry);
 
+      // В консоль — только для отладки в Safari Web Inspector
       try {
         if (window.console && console.error) {
           console.error('[' + code + ']', entry.message, extra || '');
@@ -109,7 +129,14 @@ const LM = (function () {
           '</div>' +
           '<div class="lm-error-body"></div>';
 
-        document.body.appendChild(el);
+        if (document.body) {
+          document.body.appendChild(el);
+        } else {
+          // body ещё нет — ждём DOMContentLoaded
+          document.addEventListener('DOMContentLoaded', function () {
+            try { document.body.appendChild(el); } catch (e) {}
+          });
+        }
 
         const closeBtn = el.querySelector('.lm-error-close');
         if (closeBtn) {
@@ -145,6 +172,7 @@ const LM = (function () {
     } catch (e) {}
   }
 
+  /* Глобальный перехват ошибок */
   window.addEventListener('error', function (e) {
     try {
       if (e.message) {
@@ -172,7 +200,7 @@ const LM = (function () {
         else if (reason.message) msg = reason.message;
         else msg = String(reason);
       }
-      record('LM-025', msg);
+      record('LM-025', msg, 'unhandledrejection');
     } catch (err) {}
   });
 
@@ -182,6 +210,7 @@ const LM = (function () {
 
   function clear() {
     log.length = 0;
+    try { localStorage.removeItem(DUMP_KEY); } catch (e) {}
     const el = document.getElementById('lmErrorBanner');
     if (el) el.classList.remove('show');
   }
@@ -210,6 +239,7 @@ const LM = (function () {
     return out;
   }
 
+  /* Публичный API */
   return {
     record: record,
     getAll: getAll,
@@ -217,6 +247,7 @@ const LM = (function () {
     hasErrors: hasErrors,
     describe: describe,
     toText: toText,
+    dump: dumpToStorage,
     CODES: CODES
   };
 
