@@ -268,6 +268,22 @@ function generateCoupleCode() {
   return s;
 }
 
+/* ---------- ИНФО О СЕРДЦЕ ---------- */
+
+function openHeartInfo() {
+  const body = ''
+    + '<div class="info-block">'
+    + '<p>Мы берём оценки, которые партнёр поставил за последние <b>7 дней</b>, и находим среднее. Затем умножаем на 20 — получаем процент от 0 до 100%.</p>'
+    + '<div class="info-formula">среднее × 20 = <span class="info-accent">процент</span></div>'
+    + '<p>Например: <b>4 из 5</b> → <span class="info-accent">80%</span>.</p>'
+    + '<p><b>Что это значит:</b> чем выше процент, тем теплее партнёр чувствует себя рядом с тобой в последнюю неделю. Это не «оценка тебя», а его/её собственное состояние.</p>'
+    + '<p>Если партнёр не голосовал — процент не считается.</p>'
+    + '</div>'
+    + '<button type="button" class="modal-btn primary" data-action="close">Понятно</button>';
+
+  openModal('<h3>Как считается состояние партнёра</h3>' + body);
+}
+
 /* ---------- МОДАЛКА «МОЁ ИМЯ» ---------- */
 
 function openMyNameModal() {
@@ -747,6 +763,9 @@ function bindEvents() {
       setTimeout(hideChartTooltip, 2000);
     }, { passive: false });
   }
+
+  const heartInfoBtn = $('heartInfoBtn');
+  if (heartInfoBtn) heartInfoBtn.addEventListener('click', openHeartInfo);
 
   const modalContent = $('coupleModalContent');
   if (modalContent) {
