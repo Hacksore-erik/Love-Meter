@@ -1,23 +1,3 @@
-/* ============================================================
-   SUPABASE — синхронизация между партнёрами
-   ============================================================
-   Файл полностью опционален. Если в js/config.js ключи пустые,
-   всё работает вхолостую.
-
-   Синхронизируется:
-   - голоса (votes)
-   - имена партнёров (name_you, name_partner)
-   - дата старта (start_date)
-   - флаги скрытия (hide_you, hide_partner)
-
-   Про роли:
-   - 'you'     — первый, кто создал пару
-   - 'partner' — второй, кто подключился
-   ============================================================ */
-
-/* ============================================================
-   КЛЮЧИ СТОЛБЦОВ
-   ============================================================ */
 function myHideColumn() {
   return APP.myRole === 'you' ? 'hide_you' : 'hide_partner';
 }
@@ -34,9 +14,14 @@ function partnerNameColumn() {
   return APP.myRole === 'you' ? 'name_partner' : 'name_you';
 }
 
-/* ============================================================
-   ЗАГРУЗКА КЛИЕНТА
-   ============================================================ */
+function myGenderColumn() {
+  return APP.myRole === 'you' ? 'gender_you' : 'gender_partner';
+}
+
+function partnerGenderColumn() {
+  return APP.myRole === 'you' ? 'gender_partner' : 'gender_you';
+}
+
 function initSupabaseAsync() {
   if (!HAS_SUPABASE) return Promise.resolve(null);
   if (APP.supabaseLoading) return APP.supabaseLoading;
@@ -58,9 +43,6 @@ function initSupabaseAsync() {
   return APP.supabaseLoading;
 }
 
-/* ============================================================
-   ОПРЕДЕЛЕНИЕ МОЕЙ РОЛИ — АСИНХРОННО
-   ============================================================ */
 async function determineMyRole(code) {
   const creator = storageGet(CONFIG.STORAGE.creator + code);
 
@@ -109,9 +91,6 @@ async function determineMyRole(code) {
   APP.myRole = 'you';
 }
 
-/* ============================================================
-   ЗАГРУЗКА ДАННЫХ ПАРЫ
-   ============================================================ */
 async function loadFromSupabase() {
   if (!APP.supabaseClient || !APP.coupleId) return false;
 
@@ -123,25 +102,22 @@ async function loadFromSupabase() {
       .maybeSingle();
 
     if (coupleRes.error || !coupleRes.data) return false;
-
     const couple = coupleRes.data;
 
-    const myNameCol = myNameColumn();
-    const partnerNameCol = partnerNameColumn();
+    const sName = couple[myNameColumn()];
+    const sPN = couple[partnerNameColumn()];
+    const sGen = couple[myGenderColumn()];
+    const sPGen = couple[partnerGenderColumn()];
 
-    const serverMyName = couple[myNameCol];
-    const serverPartnerName = couple[partnerNameCol];
-
-    if (serverMyName) APP.state.myName = serverMyName;
-    if (serverPartnerName) APP.state.partnerName = serverPartnerName;
+    if (sName) APP.state.myName = sName;
+    if (sPN) APP.state.partnerName = sPN;
+    if (sGen === 'f' || sGen === 'm') APP.state.myGender = sGen;
+    if (sPGen === 'f' || sPGen === 'm') APP.state.partnerGender = sPGen;
 
     APP.state.startDate = couple.start_date || APP.state.startDate;
+    APP.state.partnerHideFlag = !!couple[partnerHideColumn()];
 
-    const partnerCol = partnerHideColumn();
-    APP.state.partnerHideFlag = !!couple[partnerCol];
-
-    const myCol = myHideColumn();
-    const serverMyFlag = !!couple[myCol];
+    const serverMyFlag = !!couple[myHideColumn()];
     if (serverMyFlag !== APP.state.hideMyVotes) {
       APP.state.hideMyVotes = serverMyFlag;
     }
@@ -170,9 +146,6 @@ async function loadFromSupabase() {
   }
 }
 
-/* ============================================================
-   ОТПРАВКА ГОЛОСА
-   ============================================================ */
 async function pushVoteToSupabase(date, role, value) {
   if (!APP.supabaseClient || !APP.coupleId) return false;
 
@@ -196,24 +169,57 @@ async function pushVoteToSupabase(date, role, value) {
   }
 }
 
-/* ============================================================
-   ОБНОВЛЕНИЕ МЕТАДАННЫХ ПАРЫ
-   ============================================================ */
+async function pushMyName() {
+  if (!APP.supabaseClient || !APP.coupleId) return false;
+
+  try {
+    const update = {};
+    update[myNameColumn()] = getMyName();
+    update[myGenderColumn()] = getMyGender() || '';
+    update.updated_at = new Date().toISOString();
+
+    const res = await APP.supabaseClient
+      .from('couples')
+      .update(update)
+      .eq('id', APP.coupleId);
+
+    return !res.error;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function pushMyHideFlag() {
+  if (!APP.supabaseClient || !APP.coupleId) return false;
+
+  try {
+    const update = {};
+    update[myHideColumn()] = !!APP.state.hideMyVotes;
+    update.updated_at = new Date().toISOString();
+
+    const res = await APP.supabaseClient
+      .from('couples')
+      .update(update)
+      .eq('id', APP.coupleId);
+
+    return !res.error;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function pushCoupleMeta() {
   if (!APP.supabaseClient || !APP.coupleId) return false;
 
   try {
-    const myNameCol = myNameColumn();
-    const myCol = myHideColumn();
-
     const payload = {
       id: APP.coupleId,
       start_date: APP.state.startDate,
       updated_at: new Date().toISOString()
     };
-
-    payload[myNameCol] = getMyName();
-    payload[myCol] = !!APP.state.hideMyVotes;
+    payload[myNameColumn()] = getMyName();
+    payload[myGenderColumn()] = getMyGender() || '';
+    payload[myHideColumn()] = !!APP.state.hideMyVotes;
 
     const res = await APP.supabaseClient
       .from('couples')
@@ -225,55 +231,6 @@ async function pushCoupleMeta() {
   }
 }
 
-/* ============================================================
-   ОБНОВЛЕНИЕ ТОЛЬКО МОЕГО ИМЕНИ
-   ============================================================ */
-async function pushMyName() {
-  if (!APP.supabaseClient || !APP.coupleId) return false;
-
-  try {
-    const myNameCol = myNameColumn();
-    const update = {};
-    update[myNameCol] = getMyName();
-    update.updated_at = new Date().toISOString();
-
-    const res = await APP.supabaseClient
-      .from('couples')
-      .update(update)
-      .eq('id', APP.coupleId);
-
-    return !res.error;
-  } catch (e) {
-    return false;
-  }
-}
-
-/* ============================================================
-   ОБНОВЛЕНИЕ ТОЛЬКО ФЛАГА СКРЫТИЯ
-   ============================================================ */
-async function pushMyHideFlag() {
-  if (!APP.supabaseClient || !APP.coupleId) return false;
-
-  try {
-    const myCol = myHideColumn();
-    const update = {};
-    update[myCol] = !!APP.state.hideMyVotes;
-    update.updated_at = new Date().toISOString();
-
-    const res = await APP.supabaseClient
-      .from('couples')
-      .update(update)
-      .eq('id', APP.coupleId);
-
-    return !res.error;
-  } catch (e) {
-    return false;
-  }
-}
-
-/* ============================================================
-   СОЗДАНИЕ ПАРЫ
-   ============================================================ */
 async function createCoupleInSupabase(code) {
   if (!APP.supabaseClient) return false;
 
@@ -281,10 +238,12 @@ async function createCoupleInSupabase(code) {
     const payload = {
       id: code,
       start_date: APP.state.startDate,
-      hide_you: false,
-      hide_partner: false,
       name_you: getMyName(),
-      name_partner: ''
+      name_partner: '',
+      gender_you: getMyGender() || '',
+      gender_partner: '',
+      hide_you: false,
+      hide_partner: false
     };
 
     const res = await APP.supabaseClient
@@ -297,9 +256,6 @@ async function createCoupleInSupabase(code) {
   }
 }
 
-/* ============================================================
-   ПРОВЕРКА СУЩЕСТВОВАНИЯ ПАРЫ
-   ============================================================ */
 async function checkCoupleExists(code) {
   if (!APP.supabaseClient) return false;
 
@@ -316,9 +272,6 @@ async function checkCoupleExists(code) {
   }
 }
 
-/* ============================================================
-   ЗАЛИВКА ЛОКАЛЬНЫХ ГОЛОСОВ
-   ============================================================ */
 async function syncAllLocalVotesToSupabase() {
   if (!APP.supabaseClient || !APP.coupleId) return;
 
@@ -331,23 +284,16 @@ async function syncAllLocalVotesToSupabase() {
     if (v.partner) promises.push(pushVoteToSupabase(date, 'partner', v.partner));
   }
 
-  try {
-    await Promise.all(promises);
-  } catch (e) { /* игнорируем */ }
+  try { await Promise.all(promises); } catch (e) {}
 
   await pushCoupleMeta();
 }
 
-/* ============================================================
-   ПОДПИСКА НА REALTIME
-   ============================================================ */
 function subscribeRealtime() {
   if (!APP.supabaseClient || !APP.coupleId) return;
 
   if (APP.realtimeChannel) {
-    try {
-      APP.supabaseClient.removeChannel(APP.realtimeChannel);
-    } catch (e) { /* игнорируем */ }
+    try { APP.supabaseClient.removeChannel(APP.realtimeChannel); } catch (e) {}
     APP.realtimeChannel = null;
   }
 
@@ -379,12 +325,9 @@ function subscribeRealtime() {
           updateSyncDot(status === 'SUBSCRIBED' ? 'on' : 'off');
         }
       });
-  } catch (e) { /* игнорируем */ }
+  } catch (e) {}
 }
 
-/* ============================================================
-   ОБРАБОТЧИКИ REALTIME
-   ============================================================ */
 function handleRealtimeVote(payload) {
   try {
     const row = payload.new || payload.old;
@@ -421,11 +364,10 @@ function handleRealtimeVote(payload) {
     const partnerRole = APP.myRole === 'you' ? 'partner' : 'you';
     if (role === partnerRole && !getPartnerHideFlag()) {
       if (typeof showToast === 'function') {
-        const name = getPartnerName();
-        showToast(name + ' поставил(а) оценку ' + value + ' 💕');
+        showToast(getPartnerName() + ' ' + getPartnerVerb() + ' оценку ' + value + ' 💕');
       }
     }
-  } catch (e) { /* игнорируем */ }
+  } catch (e) {}
 }
 
 function handleRealtimeCouple(payload) {
@@ -435,38 +377,44 @@ function handleRealtimeCouple(payload) {
 
     let changed = false;
 
-    const partnerNameCol = partnerNameColumn();
-    const newPartnerName = row[partnerNameCol];
-    if (newPartnerName && newPartnerName !== APP.state.partnerName) {
-      APP.state.partnerName = newPartnerName;
+    const newPN = row[partnerNameColumn()];
+    if (newPN && newPN !== APP.state.partnerName) {
+      APP.state.partnerName = newPN;
       changed = true;
       if (typeof showToast === 'function') {
-        showToast('Партнёр: ' + newPartnerName + ' 💕');
+        showToast('Партнёр: ' + newPN + ' 💕');
       }
     }
 
-    const myNameCol = myNameColumn();
-    const newMyName = row[myNameCol];
-    if (newMyName && newMyName !== APP.state.myName) {
-      APP.state.myName = newMyName;
+    const newPG = row[partnerGenderColumn()];
+    if ((newPG === 'f' || newPG === 'm') && newPG !== APP.state.partnerGender) {
+      APP.state.partnerGender = newPG;
       changed = true;
     }
 
-    if (row.start_date) {
-      APP.state.startDate = row.start_date;
-    }
-
-    const partnerCol = partnerHideColumn();
-    const newPartnerHide = !!row[partnerCol];
-    if (newPartnerHide !== APP.state.partnerHideFlag) {
-      APP.state.partnerHideFlag = newPartnerHide;
+    const newMN = row[myNameColumn()];
+    if (newMN && newMN !== APP.state.myName) {
+      APP.state.myName = newMN;
       changed = true;
     }
 
-    const myCol = myHideColumn();
-    const newMyHide = !!row[myCol];
-    if (newMyHide !== APP.state.hideMyVotes) {
-      APP.state.hideMyVotes = newMyHide;
+    const newMG = row[myGenderColumn()];
+    if ((newMG === 'f' || newMG === 'm') && newMG !== APP.state.myGender) {
+      APP.state.myGender = newMG;
+      changed = true;
+    }
+
+    if (row.start_date) APP.state.startDate = row.start_date;
+
+    const newPH = !!row[partnerHideColumn()];
+    if (newPH !== APP.state.partnerHideFlag) {
+      APP.state.partnerHideFlag = newPH;
+      changed = true;
+    }
+
+    const newMH = !!row[myHideColumn()];
+    if (newMH !== APP.state.hideMyVotes) {
+      APP.state.hideMyVotes = newMH;
       changed = true;
     }
 
@@ -477,18 +425,11 @@ function handleRealtimeCouple(payload) {
     if (changed && typeof renderCoupleState === 'function') {
       renderCoupleState();
     }
-  } catch (e) { /* игнорируем */ }
+  } catch (e) {}
 }
 
-/* ============================================================
-   ОТПИСКА
-   ============================================================ */
 function unsubscribeRealtime() {
   if (!APP.supabaseClient || !APP.realtimeChannel) return;
-
-  try {
-    APP.supabaseClient.removeChannel(APP.realtimeChannel);
-  } catch (e) { /* игнорируем */ }
-
+  try { APP.supabaseClient.removeChannel(APP.realtimeChannel); } catch (e) {}
   APP.realtimeChannel = null;
 }
