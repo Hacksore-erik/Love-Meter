@@ -67,11 +67,11 @@
           </svg>
           <div class="heart-percent" id="heartPercent" aria-live="polite">0%</div>
         </div>
-        <div class="heart-status" id="heartStatus">Начните отмечать настроение</div>
+        <div class="heart-status" id="heartStatus">Партнёр пока не отмечал настроение</div>
       </div>
 
       <div class="card vote-card">
-        <p class="vote-question" id="voteQuestion">Как вы себя чувствуете сегодня в отношениях?</p>
+        <p class="vote-question" id="voteQuestion">Как ты себя чувствуешь сегодня в отношениях?</p>
         <div class="vote-buttons" id="voteButtons" role="group" aria-label="Оценка настроения">
           <button type="button" class="vote-btn" data-vote="1" aria-label="Оценка 1">🤍</button>
           <button type="button" class="vote-btn" data-vote="2" aria-label="Оценка 2">🤍</button>
@@ -81,6 +81,24 @@
         </div>
         <div class="vote-hint" id="voteHint">Можно менять один раз в день</div>
       </div>
+
+      <!-- ============ БЛОК «ОБЩЕЕ СОСТОЯНИЕ ПАРЫ» ============ -->
+      <div class="card couple-state-card">
+        <div class="couple-state-header">
+          <h3 class="couple-state-title">Общее состояние пары</h3>
+          <div class="segmented segmented-small" id="coupleStateSegmented" role="tablist">
+            <button type="button" class="seg-btn couple-state-period active" data-period="week" role="tab">7 дней</button>
+            <button type="button" class="seg-btn couple-state-period" data-period="month" role="tab">30 дней</button>
+          </div>
+        </div>
+        <div class="couple-state-body">
+          <div class="couple-state-ring" id="coupleStateRing">
+            <div class="couple-state-percent" id="coupleStatePercent">—</div>
+          </div>
+          <div class="couple-state-status" id="coupleStateStatus">Пока нет оценок за этот период</div>
+        </div>
+      </div>
+
     </section>
 
     <!-- ============ НАГРАДЫ ============ -->
@@ -238,8 +256,8 @@
         </button>
         <button type="button" class="settings-item" id="privacyBtn">
           <span class="settings-icon">🔒</span>
-          <span class="settings-label">Приватность оценок</span>
-          <span class="settings-value" id="privacyValue">Скрыто</span>
+          <span class="settings-label">Скрыть мои оценки</span>
+          <span class="settings-value" id="privacyValue">Открыто</span>
           <span class="settings-chevron">›</span>
         </button>
       </div>
@@ -259,7 +277,7 @@
         <button type="button" class="settings-item" id="aboutBtn">
           <span class="settings-icon">ℹ️</span>
           <span class="settings-label">О приложении</span>
-          <span class="settings-value">v1.0</span>
+          <span class="settings-value">v1.1</span>
           <span class="settings-chevron">›</span>
         </button>
         <button type="button" class="settings-item" id="resetBtn">
