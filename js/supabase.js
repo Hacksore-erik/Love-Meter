@@ -44,32 +44,27 @@ function initSupabaseAsync() {
 }
 
 async function determineMyRole(code) {
-  const localCreator = storageGet(CONFIG.STORAGE.creator + code);
-  if (localCreator && localCreator === APP.myId) {
-    APP.myRole = 'you';
+  if (!APP.supabaseClient) {
+    APP.myRole = 'partner';
     return;
   }
 
-  if (APP.supabaseClient) {
-    try {
-      const res = await APP.supabaseClient
-        .from('couples')
-        .select('owner_id')
-        .eq('id', code)
-        .maybeSingle();
+  try {
+    const res = await APP.supabaseClient
+      .from('couples')
+      .select('owner_id')
+      .eq('id', code)
+      .maybeSingle();
 
-      if (res.data && res.data.owner_id) {
-        if (res.data.owner_id === APP.myId) {
-          APP.myRole = 'you';
-          storageSet(CONFIG.STORAGE.creator + code, APP.myId);
-        } else {
-          APP.myRole = 'partner';
-          storageSet(CONFIG.STORAGE.creator + code, res.data.owner_id);
-        }
-        return;
+    if (res.data && res.data.owner_id) {
+      if (res.data.owner_id === APP.myId) {
+        APP.myRole = 'you';
+      } else {
+        APP.myRole = 'partner';
       }
-    } catch (e) {}
-  }
+      return;
+    }
+  } catch (e) {}
 
   APP.myRole = 'partner';
 }
