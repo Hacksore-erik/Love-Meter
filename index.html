@@ -25,8 +25,8 @@
 
 <div class="app-shell">
 
-  <header class="app-header">
-   <div class="app-header-text">
+  <header class="app-header" id="appHeader">
+    <div class="app-header-text">
       <div class="app-title-row">
         <h1 class="app-title">Love Meter</h1>
         <span class="app-beta">beta</span>
@@ -40,289 +40,392 @@
   </header>
 
   <main class="screens" id="screens">
+    <div class="screens-track" id="screensTrack">
 
-    <section class="screen active" data-screen="home" aria-label="Главная">
-      <div class="heart-container">
-        <div class="heart-glow" aria-hidden="true"></div>
-        <div class="heart-title-row">
-          <span class="heart-title">Состояние партнёра</span>
-          <button type="button" class="heart-info-btn" id="heartInfoBtn" aria-label="Как считается состояние партнёра">i</button>
-        </div>
-        <div class="heart-svg-wrap">
-          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs>
-              <linearGradient id="heartGrad" x1="0" y1="1" x2="0" y2="0">
-                <stop offset="0%" stop-color="#ff2d55"/>
-                <stop offset="50%" stop-color="#ff5e7d"/>
-                <stop offset="100%" stop-color="#ff8fa3"/>
-              </linearGradient>
-              <clipPath id="heartClip">
+      <section class="screen" data-screen="home" aria-label="Главная">
+
+        <div class="heart-section">
+          <div class="heart-label-row">
+            <span class="heart-label">Состояние партнёра</span>
+            <button type="button" class="heart-info-btn" id="heartInfoBtn" aria-label="Как считается состояние партнёра">i</button>
+          </div>
+
+          <div class="heart-container" id="heartContainer">
+            <div class="heart-glow" id="heartGlow" aria-hidden="true"></div>
+
+            <svg class="heart-online" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M100 180 C 30 120, 10 80, 10 55 C 10 25, 35 10, 60 10 C 80 10, 95 25, 100 40 C 105 25, 120 10, 140 10 C 165 10, 190 25, 190 55 C 190 80, 170 120, 100 180 Z"/>
+            </svg>
+
+            <div class="heart-pressure" id="heartPressure"></div>
+            <div class="heart-shadow"></div>
+
+            <div class="heart-ripple" aria-hidden="true">
+              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
                 <path d="M100 180 C 30 120, 10 80, 10 55 C 10 25, 35 10, 60 10 C 80 10, 95 25, 100 40 C 105 25, 120 10, 140 10 C 165 10, 190 25, 190 55 C 190 80, 170 120, 100 180 Z"/>
-              </clipPath>
-            </defs>
-            <path d="M100 180 C 30 120, 10 80, 10 55 C 10 25, 35 10, 60 10 C 80 10, 95 25, 100 40 C 105 25, 120 10, 140 10 C 165 10, 190 25, 190 55 C 190 80, 170 120, 100 180 Z"
-                  fill="#f2f2f7" stroke="#e0e0e5" stroke-width="2"/>
-            <g clip-path="url(#heartClip)">
-              <rect id="heartFill" x="0" y="195" width="200" height="200" fill="url(#heartGrad)"/>
-            </g>
-            <path d="M100 180 C 30 120, 10 80, 10 55 C 10 25, 35 10, 60 10 C 80 10, 95 25, 100 40 C 105 25, 120 10, 140 10 C 165 10, 190 25, 190 55 C 190 80, 170 120, 100 180 Z"
-                  fill="none" stroke="#ff8fa3" stroke-width="1.5" opacity="0.5"/>
-          </svg>
-          <div class="heart-percent" id="heartPercent" aria-live="polite">0%</div>
-        </div>
-        <div class="heart-status" id="heartStatus">Партнёр пока не отмечал настроение</div>
-      </div>
+              </svg>
+            </div>
 
-      <div class="card vote-card">
-        <p class="vote-question" id="voteQuestion">Как ты себя чувствуешь сегодня в отношениях?</p>
-        <div class="vote-buttons" id="voteButtons" role="group" aria-label="Оценка настроения">
-          <button type="button" class="vote-btn" data-vote="1" aria-label="Оценка 1">🤍</button>
-          <button type="button" class="vote-btn" data-vote="2" aria-label="Оценка 2">🤍</button>
-          <button type="button" class="vote-btn" data-vote="3" aria-label="Оценка 3">🤍</button>
-          <button type="button" class="vote-btn" data-vote="4" aria-label="Оценка 4">🤍</button>
-          <button type="button" class="vote-btn" data-vote="5" aria-label="Оценка 5">🤍</button>
-        </div>
-        <div class="vote-hint" id="voteHint">Можно менять один раз в день</div>
-      </div>
+            <div class="heart-wave" aria-hidden="true">
+              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <path d="M100 180 C 30 120, 10 80, 10 55 C 10 25, 35 10, 60 10 C 80 10, 95 25, 100 40 C 105 25, 120 10, 140 10 C 165 10, 190 25, 190 55 C 190 80, 170 120, 100 180 Z"/>
+                <path d="M100 180 C 30 120, 10 80, 10 55 C 10 25, 35 10, 60 10 C 80 10, 95 25, 100 40 C 105 25, 120 10, 140 10 C 165 10, 190 25, 190 55 C 190 80, 170 120, 100 180 Z"/>
+                <path d="M100 180 C 30 120, 10 80, 10 55 C 10 25, 35 10, 60 10 C 80 10, 95 25, 100 40 C 105 25, 120 10, 140 10 C 165 10, 190 25, 190 55 C 190 80, 170 120, 100 180 Z"/>
+              </svg>
+            </div>
 
-      <div class="card couple-state-card">
-        <div class="couple-state-header">
-          <h3 class="couple-state-title">Общее состояние пары</h3>
-          <div class="segmented segmented-small" id="coupleStateSegmented" role="tablist">
-            <button type="button" class="seg-btn couple-state-period active" data-period="week" role="tab">7 дней</button>
-            <button type="button" class="seg-btn couple-state-period" data-period="month" role="tab">30 дней</button>
+            <div class="heart-beat" id="heartBeat">
+              <svg class="heart-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <clipPath id="heartClip">
+                    <path d="M100 180 C 30 120, 10 80, 10 55 C 10 25, 35 10, 60 10 C 80 10, 95 25, 100 40 C 105 25, 120 10, 140 10 C 165 10, 190 25, 190 55 C 190 80, 170 120, 100 180 Z"/>
+                  </clipPath>
+
+                  <linearGradient id="emptyGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#ffe5eb"/>
+                    <stop offset="100%" stop-color="#ffd0da"/>
+                  </linearGradient>
+
+                  <linearGradient id="liquidGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#ff8fa3"/>
+                    <stop offset="50%" stop-color="#ff5e7d"/>
+                    <stop offset="100%" stop-color="#ff2d55"/>
+                  </linearGradient>
+
+                  <radialGradient id="shine" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="rgba(255,255,255,0.85)"/>
+                    <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+                  </radialGradient>
+                </defs>
+
+                <path d="M100 180 C 30 120, 10 80, 10 55 C 10 25, 35 10, 60 10 C 80 10, 95 25, 100 40 C 105 25, 120 10, 140 10 C 165 10, 190 25, 190 55 C 190 80, 170 120, 100 180 Z"
+                      fill="url(#emptyGrad)"/>
+
+                <g clip-path="url(#heartClip)">
+                  <path id="waveFront" class="wave-front"
+                        d="M -60 100 Q -35 96, -10 100 T 40 100 T 90 100 T 140 100 T 190 100 T 240 100 L 260 200 L -60 200 Z"
+                        fill="url(#liquidGrad)"/>
+                </g>
+
+                <ellipse cx="60" cy="35" rx="18" ry="9"
+                         fill="url(#shine)"
+                         transform="rotate(-25 60 35)"
+                         clip-path="url(#heartClip)"/>
+
+                <path d="M100 180 C 30 120, 10 80, 10 55 C 10 25, 35 10, 60 10 C 80 10, 95 25, 100 40 C 105 25, 120 10, 140 10 C 165 10, 190 25, 190 55 C 190 80, 170 120, 100 180 Z"
+                      fill="none" stroke="rgba(255,94,125,0.55)" stroke-width="1.5"/>
+              </svg>
+
+              <div class="heart-percent" id="heartPercent" aria-live="polite">—%</div>
+            </div>
+
+            <div class="heart-hint" aria-hidden="true">Отпусти 💗</div>
+          </div>
+
+          <div class="status-pill" id="statusPill">Партнёр пока не отмечал настроение</div>
+
+          <div class="meta-row">
+            <div class="meta-item">
+              <span class="updated-hint" id="updatedHint">обновлено только что</span>
+            </div>
+            <span class="meta-sep" aria-hidden="true"></span>
+            <div class="meta-item">
+              <span class="partner-dot" id="partnerDot"></span>
+              <span class="partner-status" id="partnerStatus">партнёр не в сети</span>
+            </div>
           </div>
         </div>
-        <div class="couple-state-body">
-          <div class="couple-state-ring" id="coupleStateRing">
-            <div class="couple-state-percent" id="coupleStatePercent">—</div>
+
+        <div class="card vote-card">
+          <p class="vote-question" id="voteQuestion">Как ты себя чувствуешь сегодня в отношениях?</p>
+          <div class="vote-buttons" id="voteButtons" role="group" aria-label="Оценка настроения">
+            <button type="button" class="vote-btn" data-vote="1" aria-label="Оценка 1">🤍</button>
+            <button type="button" class="vote-btn" data-vote="2" aria-label="Оценка 2">🤍</button>
+            <button type="button" class="vote-btn" data-vote="3" aria-label="Оценка 3">🤍</button>
+            <button type="button" class="vote-btn" data-vote="4" aria-label="Оценка 4">🤍</button>
+            <button type="button" class="vote-btn" data-vote="5" aria-label="Оценка 5">🤍</button>
           </div>
-          <div class="couple-state-status" id="coupleStateStatus">Пока нет оценок за этот период</div>
+          <div class="vote-hint" id="voteHint">Можно менять один раз в день</div>
+          <button type="button" class="vote-change" id="voteChange">Изменить мою оценку</button>
         </div>
-      </div>
 
-    </section>
-
-    <section class="screen" data-screen="awards" aria-label="Достижения">
-      <header class="screen-header">
-        <h2 class="screen-title">Достижения</h2>
-        <p class="screen-subtitle" id="awardsSubtitle">Открыто 0 из 10</p>
-      </header>
-
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-value" id="statStreak">0</div>
-          <div class="stat-label">Дней стрик</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="statTotal">0</div>
-          <div class="stat-label">Всего оценок</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="statMedals">0</div>
-          <div class="stat-label">Медалей</div>
-        </div>
-      </div>
-
-      <div class="achievements-grid" id="achievementsGrid"></div>
-    </section>
-
-    <section class="screen" data-screen="calendar" aria-label="Календарь">
-      <header class="screen-header">
-        <h2 class="screen-title">Календарь</h2>
-        <p class="screen-subtitle">Ваше настроение в отношениях</p>
-      </header>
-
-      <div class="cal-header">
-        <div class="cal-month" id="calMonthLabel">—</div>
-        <div class="cal-nav">
-          <button type="button" class="cal-nav-btn" id="calPrev" aria-label="Предыдущий месяц">‹</button>
-          <button type="button" class="cal-nav-btn" id="calNext" aria-label="Следующий месяц">›</button>
-        </div>
-      </div>
-
-      <div class="card cal-card">
-        <div class="cal-weekdays" aria-hidden="true">
-          <div class="cal-weekday">Пн</div>
-          <div class="cal-weekday">Вт</div>
-          <div class="cal-weekday">Ср</div>
-          <div class="cal-weekday">Чт</div>
-          <div class="cal-weekday">Пт</div>
-          <div class="cal-weekday">Сб</div>
-          <div class="cal-weekday">Вс</div>
-        </div>
-        <div class="cal-grid" id="calGrid"></div>
-        <div class="cal-legend">
-          <div class="legend-item"><span class="legend-dot" style="background:var(--mood-1)"></span>Плохо</div>
-          <div class="legend-item"><span class="legend-dot" style="background:var(--mood-3)"></span>Средне</div>
-          <div class="legend-item"><span class="legend-dot" style="background:var(--mood-5)"></span>Отлично</div>
-          <div class="legend-item"><span class="legend-ring"></span>Оба голоса</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3 class="insight-title">✨ Инсайт месяца</h3>
-        <p class="insight-text" id="insightText">Пока нет данных за этот месяц.</p>
-      </div>
-    </section>
-
-    <section class="screen" data-screen="chart" aria-label="Динамика">
-      <header class="screen-header">
-        <h2 class="screen-title">Динамика</h2>
-        <p class="screen-subtitle">Как менялось настроение</p>
-      </header>
-
-      <div class="segmented" id="segmented" role="tablist">
-        <button type="button" class="seg-btn" data-period="week" role="tab">Неделя</button>
-        <button type="button" class="seg-btn active" data-period="month" role="tab">Месяц</button>
-        <button type="button" class="seg-btn" data-period="year" role="tab">Год</button>
-      </div>
-
-      <div class="card chart-card">
-        <div class="chart-header">
-          <div class="chart-avg" id="chartAvg">—</div>
-          <div class="chart-delta delta-same" id="chartDelta">= без изменений</div>
-        </div>
-        <div class="chart-svg-wrap" id="chartWrap">
-          <svg viewBox="0 0 320 180" preserveAspectRatio="none" id="chartSvg" aria-hidden="true"></svg>
-          <div class="chart-tooltip" id="chartTooltip" role="tooltip"></div>
-        </div>
-        <div class="chart-x-labels" id="chartXLabels"></div>
-      </div>
-
-      <div class="card">
-        <h3 class="compare-title">Сравнение</h3>
-        <div class="compare-row">
-          <span class="compare-indicator" style="background:var(--accent)"></span>
-          <span class="compare-label" id="compareYouLabel">Ты</span>
-          <svg class="compare-spark" id="sparkYou" width="60" height="20" aria-hidden="true"></svg>
-          <span class="compare-value" id="compareYouVal">—</span>
-        </div>
-        <div class="compare-row" id="comparePartner">
-          <span class="compare-indicator" style="background:var(--partner)"></span>
-          <span class="compare-label" id="comparePartnerLabel">Партнёр</span>
-          <svg class="compare-spark" id="sparkPartner" width="60" height="20" aria-hidden="true"></svg>
-          <span class="compare-value" id="comparePartnerVal">—</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3 class="compare-title">Рекорды</h3>
-        <div class="record-row">
-          <span class="record-emoji">🏆</span>
-          <span class="record-label">Лучший день</span>
-          <span class="record-value" id="bestDay">—</span>
-        </div>
-        <div class="record-row">
-          <span class="record-emoji">📉</span>
-          <span class="record-label">Худший день</span>
-          <span class="record-value" id="worstDay">—</span>
-        </div>
-        <div class="record-row">
-          <span class="record-emoji">🔥</span>
-          <span class="record-label">Самая длинная серия 5</span>
-          <span class="record-value" id="longestFive">—</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="screen" data-screen="profile" aria-label="Профиль">
-      <div class="profile-header">
-        <div class="profile-avatar" aria-hidden="true">💕</div>
-        <div class="profile-name" id="profileNames">Моя пара</div>
-        <div class="profile-sub" id="profileSub">—</div>
-      </div>
-
-      <div class="names-card">
-        <div class="names-row">
-          <div class="names-icon names-icon-you" id="profileYouIcon" aria-hidden="true">🧑</div>
-          <div class="names-info">
-            <div class="names-label">Ты</div>
-            <div class="names-value" id="profileYouName">Ты</div>
+        <div class="card couple-state-card">
+          <div class="couple-state-header">
+            <h3 class="couple-state-title">Общее состояние пары</h3>
+            <div class="segmented segmented-small" id="coupleStateSegmented" role="tablist">
+              <button type="button" class="seg-btn couple-state-period active" data-period="week" role="tab">7 дней</button>
+              <button type="button" class="seg-btn couple-state-period" data-period="month" role="tab">30 дней</button>
+            </div>
+          </div>
+          <div class="couple-state-body">
+            <div class="couple-state-ring" id="coupleStateRing">
+              <div class="couple-state-percent" id="coupleStatePercent">—</div>
+            </div>
+            <div class="couple-state-status" id="coupleStateStatus">Пока нет оценок за этот период</div>
           </div>
         </div>
-        <div class="names-row">
-          <div class="names-icon names-icon-partner" id="profilePartnerIcon" aria-hidden="true">🧑</div>
-          <div class="names-info">
-            <div class="names-label">Партнёр</div>
-            <div class="names-value" id="profilePartnerName">Партнёр</div>
+
+      </section>
+
+      <section class="screen" data-screen="awards" aria-label="Достижения">
+        <header class="screen-header">
+          <h2 class="screen-title">Достижения</h2>
+          <p class="screen-subtitle" id="awardsSubtitle">Открыто 0 из 10</p>
+        </header>
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-value" id="statStreak">0</div>
+            <div class="stat-label">Дней стрик</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statTotal">0</div>
+            <div class="stat-label">Всего оценок</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statMedals">0</div>
+            <div class="stat-label">Медалей</div>
           </div>
         </div>
-      </div>
 
-      <div class="settings-group">
-        <button type="button" class="settings-item" id="coupleBtn">
-          <span class="settings-icon">🔗</span>
-          <span class="settings-label">Пара</span>
-          <span class="settings-value" id="coupleBtnValue">Не подключена</span>
-          <span class="settings-chevron">›</span>
-        </button>
-        <button type="button" class="settings-item" id="namesBtn">
-          <span class="settings-icon">✏️</span>
-          <span class="settings-label">Моё имя</span>
-          <span class="settings-value" id="namesBtnValue">Изменить</span>
-          <span class="settings-chevron">›</span>
-        </button>
-        <button type="button" class="settings-item" id="exportPdfBtn">
-          <span class="settings-icon">📄</span>
-          <span class="settings-label">Экспорт отчёта</span>
-          <span class="settings-value">PDF</span>
-          <span class="settings-chevron">›</span>
-        </button>
-        <button type="button" class="settings-item" id="privacyBtn">
-          <span class="settings-icon">🔒</span>
-          <span class="settings-label">Скрыть мои оценки</span>
-          <span class="settings-value" id="privacyValue">Открыто</span>
-          <span class="settings-chevron">›</span>
-        </button>
-      </div>
+        <div class="achievements-grid" id="achievementsGrid"></div>
+      </section>
 
-      <div class="settings-group">
-        <button type="button" class="settings-item" id="installBtn" style="display:none;">
-          <span class="settings-icon">📲</span>
-          <span class="settings-label">Установить приложение</span>
-          <span class="settings-chevron">›</span>
-        </button>
-        <button type="button" class="settings-item" id="errorLogBtn">
-          <span class="settings-icon">🐞</span>
-          <span class="settings-label">Журнал ошибок</span>
-          <span class="settings-value" id="errorLogCount">0</span>
-          <span class="settings-chevron">›</span>
-        </button>
-        <button type="button" class="settings-item" id="aboutBtn">
-          <span class="settings-icon">ℹ️</span>
-          <span class="settings-label">О приложении</span>
-          <span class="settings-value">v1.3</span>
-          <span class="settings-chevron">›</span>
-        </button>
-        <button type="button" class="settings-item" id="resetBtn">
-          <span class="settings-icon">🗑️</span>
-          <span class="settings-label settings-label-danger">Сбросить все данные</span>
-          <span class="settings-chevron">›</span>
-        </button>
-      </div>
-    </section>
+      <section class="screen" data-screen="calendar" aria-label="Календарь">
+        <header class="screen-header">
+          <h2 class="screen-title">Календарь</h2>
+          <p class="screen-subtitle">Ваше настроение в отношениях</p>
+        </header>
+
+        <div class="cal-header">
+          <div class="cal-month" id="calMonthLabel">—</div>
+          <div class="cal-nav">
+            <button type="button" class="cal-nav-btn" id="calPrev" aria-label="Предыдущий месяц">‹</button>
+            <button type="button" class="cal-nav-btn" id="calNext" aria-label="Следующий месяц">›</button>
+          </div>
+        </div>
+
+        <div class="card cal-card">
+          <div class="cal-weekdays" aria-hidden="true">
+            <div class="cal-weekday">Пн</div>
+            <div class="cal-weekday">Вт</div>
+            <div class="cal-weekday">Ср</div>
+            <div class="cal-weekday">Чт</div>
+            <div class="cal-weekday">Пт</div>
+            <div class="cal-weekday">Сб</div>
+            <div class="cal-weekday">Вс</div>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="cal-legend">
+            <div class="legend-item"><span class="legend-dot" style="background:var(--mood-1)"></span>Плохо</div>
+            <div class="legend-item"><span class="legend-dot" style="background:var(--mood-3)"></span>Средне</div>
+            <div class="legend-item"><span class="legend-dot" style="background:var(--mood-5)"></span>Отлично</div>
+            <div class="legend-item"><span class="legend-ring"></span>Оба голоса</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="insight-title">✨ Инсайт месяца</h3>
+          <p class="insight-text" id="insightText">Пока нет данных за этот месяц.</p>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="chart" aria-label="Динамика">
+        <header class="screen-header">
+          <h2 class="screen-title">Динамика</h2>
+          <p class="screen-subtitle">Как менялось настроение</p>
+        </header>
+
+        <div class="segmented" id="segmented" role="tablist">
+          <button type="button" class="seg-btn" data-period="week" role="tab">Неделя</button>
+          <button type="button" class="seg-btn active" data-period="month" role="tab">Месяц</button>
+          <button type="button" class="seg-btn" data-period="year" role="tab">Год</button>
+        </div>
+
+        <div class="card chart-card">
+          <div class="chart-header">
+            <div class="chart-avg" id="chartAvg">—</div>
+            <div class="chart-delta delta-same" id="chartDelta">= без изменений</div>
+          </div>
+          <div class="chart-svg-wrap" id="chartWrap">
+            <svg viewBox="0 0 320 180" preserveAspectRatio="none" id="chartSvg" aria-hidden="true"></svg>
+            <div class="chart-tooltip" id="chartTooltip" role="tooltip"></div>
+          </div>
+          <div class="chart-x-labels" id="chartXLabels"></div>
+        </div>
+
+        <div class="card">
+          <h3 class="compare-title">Сравнение</h3>
+          <div class="compare-row">
+            <span class="compare-indicator" style="background:var(--accent)"></span>
+            <span class="compare-label" id="compareYouLabel">Ты</span>
+            <svg class="compare-spark" id="sparkYou" width="60" height="20" aria-hidden="true"></svg>
+            <span class="compare-value" id="compareYouVal">—</span>
+          </div>
+          <div class="compare-row" id="comparePartner">
+            <span class="compare-indicator" style="background:var(--partner)"></span>
+            <span class="compare-label" id="comparePartnerLabel">Партнёр</span>
+            <svg class="compare-spark" id="sparkPartner" width="60" height="20" aria-hidden="true"></svg>
+            <span class="compare-value" id="comparePartnerVal">—</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="compare-title">Рекорды</h3>
+          <div class="record-row">
+            <span class="record-emoji">🏆</span>
+            <span class="record-label">Лучший день</span>
+            <span class="record-value" id="bestDay">—</span>
+          </div>
+          <div class="record-row">
+            <span class="record-emoji">📉</span>
+            <span class="record-label">Худший день</span>
+            <span class="record-value" id="worstDay">—</span>
+          </div>
+          <div class="record-row">
+            <span class="record-emoji">🔥</span>
+            <span class="record-label">Самая длинная серия 5</span>
+            <span class="record-value" id="longestFive">—</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="profile" aria-label="Профиль">
+        <div class="profile-header">
+          <div class="profile-avatar" aria-hidden="true">💕</div>
+          <div class="profile-name" id="profileNames">Моя пара</div>
+          <div class="profile-sub" id="profileSub">—</div>
+        </div>
+
+        <div class="names-card">
+          <div class="names-row">
+            <div class="names-icon names-icon-you" id="profileYouIcon" aria-hidden="true">🧑</div>
+            <div class="names-info">
+              <div class="names-label">Ты</div>
+              <div class="names-value" id="profileYouName">Ты</div>
+            </div>
+          </div>
+          <div class="names-row">
+            <div class="names-icon names-icon-partner" id="profilePartnerIcon" aria-hidden="true">🧑</div>
+            <div class="names-info">
+              <div class="names-label">Партнёр</div>
+              <div class="names-value" id="profilePartnerName">Партнёр</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <button type="button" class="settings-item" id="coupleBtn">
+            <span class="settings-icon">🔗</span>
+            <span class="settings-label">Пара</span>
+            <span class="settings-value" id="coupleBtnValue">Не подключена</span>
+            <span class="settings-chevron">›</span>
+          </button>
+          <button type="button" class="settings-item" id="namesBtn">
+            <span class="settings-icon">✏️</span>
+            <span class="settings-label">Моё имя</span>
+            <span class="settings-value" id="namesBtnValue">Изменить</span>
+            <span class="settings-chevron">›</span>
+          </button>
+          <button type="button" class="settings-item" id="exportPdfBtn">
+            <span class="settings-icon">📄</span>
+            <span class="settings-label">Экспорт отчёта</span>
+            <span class="settings-value">PDF</span>
+            <span class="settings-chevron">›</span>
+          </button>
+          <button type="button" class="settings-item" id="privacyBtn">
+            <span class="settings-icon">🔒</span>
+            <span class="settings-label">Скрыть мои оценки</span>
+            <span class="settings-value" id="privacyValue">Открыто</span>
+            <span class="settings-chevron">›</span>
+          </button>
+        </div>
+
+        <div class="settings-group">
+          <button type="button" class="settings-item" id="installBtn" style="display:none;">
+            <span class="settings-icon">📲</span>
+            <span class="settings-label">Установить приложение</span>
+            <span class="settings-chevron">›</span>
+          </button>
+          <button type="button" class="settings-item" id="errorLogBtn">
+            <span class="settings-icon">🐞</span>
+            <span class="settings-label">Журнал ошибок</span>
+            <span class="settings-value" id="errorLogCount">0</span>
+            <span class="settings-chevron">›</span>
+          </button>
+          <button type="button" class="settings-item" id="aboutBtn">
+            <span class="settings-icon">ℹ️</span>
+            <span class="settings-label">О приложении</span>
+            <span class="settings-value">v1.3</span>
+            <span class="settings-chevron">›</span>
+          </button>
+          <button type="button" class="settings-item" id="resetBtn">
+            <span class="settings-icon">🗑️</span>
+            <span class="settings-label settings-label-danger">Сбросить все данные</span>
+            <span class="settings-chevron">›</span>
+          </button>
+        </div>
+      </section>
+
+    </div>
   </main>
 
   <nav class="tab-bar" id="tabBar" role="tablist">
     <button type="button" class="tab-item active" data-tab="home" role="tab" aria-label="Главная">
-      <span class="tab-emoji">🏠</span>
+      <span class="tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 10.5 L12 3 L21 10.5"/>
+          <path d="M5 9.5 V20 H19 V9.5"/>
+          <path d="M10 20 V14 H14 V20"/>
+        </svg>
+      </span>
       <span class="tab-label">Главная</span>
     </button>
+
     <button type="button" class="tab-item" data-tab="awards" role="tab" aria-label="Награды">
-      <span class="tab-emoji">🏆</span>
+      <span class="tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M8 21 H16 V18 H8 Z"/>
+          <path d="M7 18 H17 V8 A5 5 0 0 0 7 8 Z"/>
+          <path d="M12 3 V5"/>
+          <circle cx="12" cy="7" r="0.6"/>
+        </svg>
+      </span>
       <span class="tab-label">Награды</span>
     </button>
+
     <button type="button" class="tab-item" data-tab="calendar" role="tab" aria-label="Календарь">
-      <span class="tab-emoji">📅</span>
+      <span class="tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <rect x="3" y="5" width="18" height="16" rx="2.5"/>
+          <path d="M3 10 H21"/>
+          <path d="M8 3 V7"/>
+          <path d="M16 3 V7"/>
+          <circle cx="8" cy="14" r="0.6"/>
+          <circle cx="12" cy="14" r="0.6"/>
+          <circle cx="16" cy="14" r="0.6"/>
+        </svg>
+      </span>
       <span class="tab-label">Календарь</span>
     </button>
+
     <button type="button" class="tab-item" data-tab="chart" role="tab" aria-label="Динамика">
-      <span class="tab-emoji">📈</span>
+      <span class="tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M4 18 L9 12 L13 15 L20 7"/>
+          <path d="M15 7 H20 V12"/>
+        </svg>
+      </span>
       <span class="tab-label">Динамика</span>
     </button>
+
     <button type="button" class="tab-item" data-tab="profile" role="tab" aria-label="Профиль">
-      <span class="tab-emoji">👤</span>
+      <span class="tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="8.5" r="3.8"/>
+          <path d="M4.5 20.5 C 5.5 16.5, 8.5 15, 12 15 C 15.5 15, 18.5 16.5, 19.5 20.5"/>
+        </svg>
+      </span>
       <span class="tab-label">Профиль</span>
     </button>
   </nav>
