@@ -4,15 +4,17 @@
    Здесь собрано всё, что связано с пользовательским
    взаимодействием вне четырёх экранов:
    - toast-уведомления
-   - модальное окно (пары, инфо, имена, журнал ошибок)
+   - модальные окна (пары, инфо, имена, журнал ошибок)
    - профиль и настройки
    - экспорт PDF
    - переключение табов
    - PWA-установка
+   - блок «Общее состояние пары» (переключатель 7/30 дней)
 
-   Все ошибки логируются через LM.record() с кодами:
-   LM-005, LM-013, LM-014, LM-015, LM-020, LM-021,
-   LM-022, LM-023, LM-024, LM-029, LM-030
+   Изменения в этой версии:
+   - togglePrivacy() работает с hideMyVotes + pushMyHideFlag
+   - openModal() — починка «скачка» (innerHTML → RAF → .show)
+   - обработчики переключателя периода блока пары
    ============================================================ */
 
 
@@ -61,7 +63,7 @@ function updateSyncDot(status) {
 
 
 /* ============================================================
-   НАВИГАЦИЯ — переключение табов
+   НАВИГАЦИЯ
    ============================================================ */
 function switchTab(tab) {
   try {
@@ -109,7 +111,7 @@ function renderProfile() {
 
   const pv = $('privacyValue');
   if (pv) {
-    pv.textContent = APP.state.openMode ? 'Открыто' : 'Скрыто';
+    pv.textContent = APP.state.hideMyVotes ? 'Скрыто' : 'Открыто';
   }
 
   const cb = $('coupleBtnValue');
@@ -124,6 +126,11 @@ function renderProfile() {
 
 /* ============================================================
    МОДАЛКА — открыть/закрыть
+   ============================================================
+   Починка «скачка»: сначала наполняем innerHTML, потом через
+   requestAnimationFrame добавляем .show. Это гарантирует,
+   что браузер сначала посчитает высоту контента, а потом
+   плавно покажет модалку без «дёргания».
    ============================================================ */
 function openModal(htmlContent) {
   try {
@@ -131,8 +138,18 @@ function openModal(htmlContent) {
     const content = $('coupleModalContent');
     if (!modal || !content) return;
 
+    /* Если уже открыта — сначала сбрасываем, чтобы не было
+       наложения старого и нового содержимого */
+    modal.classList.remove('show');
+
     content.innerHTML = htmlContent;
-    modal.classList.add('show');
+
+    /* Двойной RAF для надёжности на iOS Safari */
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        modal.classList.add('show');
+      });
+    });
   } catch (e) {
     if (typeof LM !== 'undefined') {
       LM.record('LM-013', e.message || 'Ошибка открытия модалки');
@@ -170,7 +187,7 @@ function openCoupleModal() {
       '<h3>Одиночный режим</h3>' +
       '<p>Приложение работает локально на этом устройстве. ' +
       'Чтобы синхронизироваться с партнёром, добавьте ключи Supabase ' +
-      'в файл <b>js/config.js</b> (переменная CONFIG.SUPABASE).</p>' +
+      'в файл <b>js/config.js</b>.</p>' +
       '<button type="button" class="modal-btn primary" data-action="close">Понятно</button>'
     );
     return;
@@ -214,10 +231,12 @@ async function onCoupleModalAction(action) {
     if (!confirm('Отключить пару? Локальные данные сохранятся.')) return;
     storageRemove(CONFIG.STORAGE.couple);
     APP.coupleId = null;
+    APP.state.partnerHideFlag = false;
     unsubscribeRealtime();
     updateSyncDot('local');
     closeModal();
     renderProfile();
+    renderAll();
     showToast('Пара отключена');
     return;
   }
@@ -322,7 +341,7 @@ function openNamesModal() {
       inp.focus();
       inp.select();
     }
-  }, 100);
+  }, 150);
 }
 
 async function onNamesModalAction(action) {
@@ -382,7 +401,7 @@ function openAboutModal() {
   openModal(
     '<h3>Love Meter</h3>' +
     '<p>Трекер эмоционального состояния пары.<br>' +
-    'Версия 1.0 • Режим: ' + mode + '</p>' +
+    'Версия 1.1 • Режим: ' + mode + '</p>' +
     '<p style="font-size:12px;margin-bottom:20px;">Данные хранятся в браузере. ' +
     'Никаких аккаунтов, аналитики и рекламы.</p>' +
     '<button type="button" class="modal-btn primary" data-action="close">Закрыть</button>'
@@ -392,19 +411,37 @@ function openAboutModal() {
 
 /* ============================================================
    ПРИВАТНОСТЬ ОЦЕНОК
+   ============================================================
+   Переключает MY флаг скрытия моих оценок от партнёра.
+   Синхронизируется на сервер через pushMyHideFlag().
+
+   Если сервер недоступен — флаг всё равно переключается
+   локально, следующий push произойдёт при следующей попытке.
    ============================================================ */
 async function togglePrivacy() {
   try {
-    APP.state.openMode = !APP.state.openMode;
+    APP.state.hideMyVotes = !APP.state.hideMyVotes;
     saveState();
 
     if (APP.supabaseClient && APP.coupleId) {
-      await pushCoupleMeta();
+      const ok = await pushMyHideFlag();
+      if (!ok) {
+        showToast('Сохранено локально, синхронизируется позже ⏳');
+      } else {
+        showToast(APP.state.hideMyVotes
+          ? 'Твои оценки скрыты от партнёра 🔒'
+          : 'Твои оценки видны партнёру 👀');
+      }
+    } else {
+      showToast(APP.state.hideMyVotes
+        ? 'Оценки скрыты 🔒'
+        : 'Оценки видны 👀');
     }
 
+    /* Обновляем UI: профиль, главную (для рендера блока пары), график */
     renderProfile();
-    renderChart();
-    showToast(APP.state.openMode ? 'Оценки открыты 👀' : 'Оценки скрыты 🔒');
+    renderAll();
+    if (isScreenActive('chart')) renderChart();
   } catch (e) {
     if (typeof LM !== 'undefined') {
       LM.record('LM-023', e.message || 'Ошибка togglePrivacy');
@@ -423,6 +460,19 @@ function resetAllData() {
   storageRemove(CONFIG.STORAGE.couple);
 
   location.reload();
+}
+
+
+/* ============================================================
+   ПЕРЕКЛЮЧАТЕЛЬ ПЕРИОДА БЛОКА «ОБЩЕЕ СОСТОЯНИЕ ПАРЫ»
+   ============================================================ */
+function onCoupleStatePeriodClick(period) {
+  if (period !== 'week' && period !== 'month') return;
+
+  APP.coupleStatePeriod = period;
+  storageSet('lovemeter_couple_state_period', period);
+
+  renderCoupleState();
 }
 
 
@@ -470,13 +520,13 @@ async function exportPDF() {
   }
 
   try {
-    const pct = computePercent();
+    const couple = computeCouplePercent('week');
     const start = parseDate(APP.state.startDate);
     const days = daysBetween(start, new Date()) + 1;
 
     setText('pdfNames', APP.state.names);
     setText('pdfDays', days + ' дней в Love Meter');
-    setText('pdfAvg', pct + '%');
+    setText('pdfAvg', couple.hasData ? (couple.percent + '%') : '—');
     setText('pdfTotalDays', days);
     setText('pdfStreak', APP.state.streak);
 
@@ -538,12 +588,21 @@ function collectMoments() {
   const moments = [];
   const today = new Date();
 
+  const iHide = getMyHideFlag();
+  const partnerHide = getPartnerHideFlag();
+
   for (let i = 0; i < 30 && moments.length < 4; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const key = fmtDate(d);
     const v = APP.state.votes[key];
-    if (v && (v.you === 5 || v.partner === 5)) {
+    if (!v) continue;
+
+    const vals = [];
+    if (v.you && !iHide) vals.push(v.you);
+    if (v.partner && !partnerHide) vals.push(v.partner);
+
+    if (vals.length && Math.max.apply(null, vals) === 5) {
       moments.push('❤️ ' + d.getDate() + '.' + (d.getMonth() + 1)
                  + ' — идеальный день с оценкой 5');
     }
@@ -555,9 +614,16 @@ function collectMoments() {
       d.setDate(d.getDate() - i);
       const key = fmtDate(d);
       const v = APP.state.votes[key];
+      if (!v) continue;
+
       const label = d.getDate() + '.' + (d.getMonth() + 1);
       const already = moments.some(function (m) { return m.indexOf(label) !== -1; });
-      if (v && !already && (v.you === 4 || v.partner === 4)) {
+
+      const vals = [];
+      if (v.you && !iHide) vals.push(v.you);
+      if (v.partner && !partnerHide) vals.push(v.partner);
+
+      if (!already && vals.length && Math.max.apply(null, vals) === 4) {
         moments.push('💕 ' + label + ' — тёплый день');
       }
     }
@@ -572,7 +638,7 @@ function collectMoments() {
 
 
 /* ============================================================
-   ЖУРНАЛ ОШИБОК — открыть модалку
+   ЖУРНАЛ ОШИБОК
    ============================================================ */
 function openErrorLog() {
   if (typeof LM === 'undefined') {
@@ -779,7 +845,17 @@ function bindEvents() {
   const calNext = $('calNext');
   if (calNext) calNext.addEventListener('click', nextMonth);
 
-  /* ---------- Segmented control ---------- */
+  /* ---------- Переключатель периода блока «Общее состояние» ---------- */
+  const coupleStateSeg = $('coupleStateSegmented');
+  if (coupleStateSeg) {
+    coupleStateSeg.addEventListener('click', function (e) {
+      const btn = e.target.closest('.couple-state-period');
+      if (!btn) return;
+      onCoupleStatePeriodClick(btn.dataset.period);
+    });
+  }
+
+  /* ---------- Segmented control графика ---------- */
   const segmented = $('segmented');
   if (segmented) {
     segmented.addEventListener('click', function (e) {
@@ -794,7 +870,7 @@ function bindEvents() {
     });
   }
 
-  /* ---------- График ---------- */
+  /* ---------- График — интерактив ---------- */
   const chartSvg = $('chartSvg');
   if (chartSvg) {
     chartSvg.addEventListener('mouseover', function (e) {
