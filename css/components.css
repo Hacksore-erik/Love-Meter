@@ -1673,3 +1673,48 @@
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
   word-break: break-word;
 }
+
+/* ---------- СТАТУС В СРАВНЕНИИ ---------- */
+
+.compare-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg);
+  color: var(--text-dim);
+  flex-shrink: 0;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  transition: background var(--dur) var(--ease),
+              color var(--dur) var(--ease);
+}
+
+.compare-status.mood-1 { background: #f2f2f7; color: #6e6e73; }
+.compare-status.mood-2 { background: #eef2ff; color: #3d5eff; }
+.compare-status.mood-3 { background: #f5eeff; color: #7d3dff; }
+.compare-status.mood-4 { background: #fff0f3; color: #ff2d55; }
+.compare-status.mood-5 { background: #ffe9ec; color: #d62e4d; }
+
+/* ---------- ИТОГОВАЯ СТРОКА ---------- */
+
+.compare-summary {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 0.5px solid var(--separator);
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.45;
+  font-weight: 500;
+  text-align: left;
+}
+
+.compare-summary b {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.compare-summary .cmp-accent {
+  color: var(--accent);
+  font-weight: 700;
+}
