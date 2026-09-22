@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#ff2d55">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Love Meter">
+<meta name="description" content="Трекер эмоционального состояния пары">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/animations.css">
+<title>Love Meter</title>
+</head>
+<body>
+
+<!-- ==================== МОДАЛКА ==================== -->
+<div class="modal-backdrop" id="coupleModal" aria-hidden="true">
+  <div class="modal" id="coupleModalContent"></div>
+</div>
+
+<!-- ==================== КАРКАС ==================== -->
+<div class="app-shell">
+
+  <header class="app-header">
+    <div class="app-header-text">
+      <h1 class="app-title">Love Meter</h1>
+      <p class="app-subtitle" id="headerSubtitle">Моя пара</p>
+    </div>
+    <div class="streak-pill" id="streakPill" role="status" aria-live="polite">
+      <span class="streak-emoji" aria-hidden="true">🔥</span>
+      <span class="streak-value" id="streakValue">0</span>
+      <span class="sync-dot local" id="syncDot" title="Локальный режим"></span>
+    </div>
+  </header>
+
+  <main class="screens" id="screens">
+
+    <!-- ============ ГЛАВНАЯ ============ -->
+    <section class="screen active" data-screen="home" aria-label="Главная">
+      <div class="heart-container">
+        <div class="heart-glow" aria-hidden="true"></div>
+        <div class="heart-svg-wrap">
+          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="heartGrad" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0%" stop-color="#ff2d55"/>
+                <stop offset="50%" stop-color="#ff5e7d"/>
+                <stop offset="100%" stop-color="#ff8fa3"/>
+              </linearGradient>
+              <clipPath id="heartClip">
+                <path d="M100 180 C 30 120, 10 80, 10 55 C 10 25, 35 10, 60 10 C 80 10, 95 25, 100 40 C 105 25, 120 10, 140 10 C 165 10, 190 25, 190 55 C 190 80, 170 120, 100 180 Z"/>
+              </clipPath>
+            </defs>
+            <path d="M100 180 C 30 120, 10 80, 10 55 C 10 25, 35 10, 60 10 C 80 10, 95 25, 100 40 C 105 25, 120 10, 140 10 C 165 10, 190 25, 190 55 C 190 80, 170 120, 100 180 Z"
+                  fill="#f2f2f7" stroke="#e0e0e5" stroke-width="2"/>
+            <g clip-path="url(#heartClip)">
+              <rect id="heartFill" x="0" y="195" width="200" height="200" fill="url(#heartGrad)"/>
+            </g>
+            <path d="M100 180 C 30 120, 10 80, 10 55 C 10 25, 35 10, 60 10 C 80 10, 95 25, 100 40 C 105 25, 120 10, 140 10 C 165 10, 190 25, 190 55 C 190 80, 170 120, 100 180 Z"
+                  fill="none" stroke="#ff8fa3" stroke-width="1.5" opacity="0.5"/>
+          </svg>
+          <div class="heart-percent" id="heartPercent" aria-live="polite">0%</div>
+        </div>
+        <div class="heart-status" id="heartStatus">Начните отмечать настроение</div>
+      </div>
+
+      <div class="card vote-card">
+        <p class="vote-question" id="voteQuestion">Как вы себя чувствуете сегодня в отношениях?</p>
+        <div class="vote-buttons" id="voteButtons" role="group" aria-label="Оценка настроения">
+          <button type="button" class="vote-btn" data-vote="1" aria-label="Оценка 1">🤍</button>
+          <button type="button" class="vote-btn" data-vote="2" aria-label="Оценка 2">🤍</button>
+          <button type="button" class="vote-btn" data-vote="3" aria-label="Оценка 3">🤍</button>
+          <button type="button" class="vote-btn" data-vote="4" aria-label="Оценка 4">🤍</button>
+          <button type="button" class="vote-btn" data-vote="5" aria-label="Оценка 5">🤍</button>
+        </div>
+        <div class="vote-hint" id="voteHint">Можно менять один раз в день</div>
+      </div>
+    </section>
+
+    <!-- ============ НАГРАДЫ ============ -->
+    <section class="screen" data-screen="awards" aria-label="Достижения">
+      <header class="screen-header">
+        <h2 class="screen-title">Достижения</h2>
+        <p class="screen-subtitle" id="awardsSubtitle">Открыто 0 из 10</p>
+      </header>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="statStreak">0</div>
+          <div class="stat-label">Дней стрик</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statTotal">0</div>
+          <div class="stat-label">Всего оценок</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statMedals">0</div>
+          <div class="stat-label">Медалей</div>
+        </div>
+      </div>
+
+      <div class="achievements-grid" id="achievementsGrid"></div>
+    </section>
+
+    <!-- ============ КАЛЕНДАРЬ ============ -->
+    <section class="screen" data-screen="calendar" aria-label="Календарь">
+      <header class="screen-header">
+        <h2 class="screen-title">Календарь</h2>
+        <p class="screen-subtitle">Ваше настроение в отношениях</p>
+      </header>
+
+      <div class="cal-header">
+        <div class="cal-month" id="calMonthLabel">—</div>
+        <div class="cal-nav">
+          <button type="button" class="cal-nav-btn" id="calPrev" aria-label="Предыдущий месяц">‹</button>
+          <button type="button" class="cal-nav-btn" id="calNext" aria-label="Следующий месяц">›</button>
+        </div>
+      </div>
+
+      <div class="card cal-card">
+        <div class="cal-weekdays" aria-hidden="true">
+          <div class="cal-weekday">Пн</div>
+          <div class="cal-weekday">Вт</div>
+          <div class="cal-weekday">Ср</div>
+          <div class="cal-weekday">Чт</div>
+          <div class="cal-weekday">Пт</div>
+          <div class="cal-weekday">Сб</div>
+          <div class="cal-weekday">Вс</div>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-legend">
+          <div class="legend-item"><span class="legend-dot" style="background:var(--mood-1)"></span>Плохо</div>
+          <div class="legend-item"><span class="legend-dot" style="background:var(--mood-3)"></span>Средне</div>
+          <div class="legend-item"><span class="legend-dot" style="background:var(--mood-5)"></span>Отлично</div>
+          <div class="legend-item"><span class="legend-ring"></span>Оба голоса</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="insight-title">✨ Инсайт месяца</h3>
+        <p class="insight-text" id="insightText">Пока нет данных за этот месяц.</p>
+      </div>
+    </section>
+
+    <!-- ============ ДИНАМИКА ============ -->
+    <section class="screen" data-screen="chart" aria-label="Динамика">
+      <header class="screen-header">
+        <h2 class="screen-title">Динамика</h2>
+        <p class="screen-subtitle">Как менялось настроение</p>
+      </header>
+
+      <div class="segmented" id="segmented" role="tablist">
+        <button type="button" class="seg-btn" data-period="week" role="tab">Неделя</button>
+        <button type="button" class="seg-btn active" data-period="month" role="tab">Месяц</button>
+        <button type="button" class="seg-btn" data-period="year" role="tab">Год</button>
+      </div>
+
+      <div class="card chart-card">
+        <div class="chart-header">
+          <div class="chart-avg" id="chartAvg">—</div>
+          <div class="chart-delta delta-same" id="chartDelta">= без изменений</div>
+        </div>
+        <div class="chart-svg-wrap" id="chartWrap">
+          <svg viewBox="0 0 320 180" preserveAspectRatio="none" id="chartSvg" aria-hidden="true"></svg>
+          <div class="chart-tooltip" id="chartTooltip" role="tooltip"></div>
+        </div>
+        <div class="chart-x-labels" id="chartXLabels"></div>
+      </div>
+
+      <div class="card">
+        <h3 class="compare-title">Сравнение</h3>
+        <div class="compare-row">
+          <span class="compare-indicator" style="background:var(--accent)"></span>
+          <span class="compare-label">Ты</span>
+          <svg class="compare-spark" id="sparkYou" width="60" height="20" aria-hidden="true"></svg>
+          <span class="compare-value" id="compareYouVal">—</span>
+        </div>
+        <div class="compare-row" id="comparePartner">
+          <span class="compare-indicator" style="background:var(--partner)"></span>
+          <span class="compare-label">Партнёр</span>
+          <svg class="compare-spark" id="sparkPartner" width="60" height="20" aria-hidden="true"></svg>
+          <span class="compare-value" id="comparePartnerVal">—</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="compare-title">Рекорды</h3>
+        <div class="record-row">
+          <span class="record-emoji">🏆</span>
+          <span class="record-label">Лучший день</span>
+          <span class="record-value" id="bestDay">—</span>
+        </div>
+        <div class="record-row">
+          <span class="record-emoji">📉</span>
+          <span class="record-label">Худший день</span>
+          <span class="record-value" id="worstDay">—</span>
+        </div>
+        <div class="record-row">
+          <span class="record-emoji">🔥</span>
+          <span class="record-label">Самая длинная серия 5</span>
+          <span class="record-value" id="longestFive">—</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ПРОФИЛЬ ============ -->
+    <section class="screen" data-screen="profile" aria-label="Профиль">
+      <div class="profile-header">
+        <div class="profile-avatar" aria-hidden="true">💕</div>
+        <div class="profile-name" id="profileNames">Моя пара</div>
+        <div class="profile-sub" id="profileSub">—</div>
+      </div>
+
+      <div class="settings-group">
+        <button type="button" class="settings-item" id="coupleBtn">
+          <span class="settings-icon">🔗</span>
+          <span class="settings-label">Пара</span>
+          <span class="settings-value" id="coupleBtnValue">Не подключена</span>
+          <span class="settings-chevron">›</span>
+        </button>
+        <button type="button" class="settings-item" id="namesBtn">
+          <span class="settings-icon">✏️</span>
+          <span class="settings-label">Имена пары</span>
+          <span class="settings-value" id="namesBtnValue">Моя пара</span>
+          <span class="settings-chevron">›</span>
+        </button>
+        <button type="button" class="settings-item" id="exportPdfBtn">
+          <span class="settings-icon">📄</span>
+          <span class="settings-label">Экспорт отчёта</span>
+          <span class="settings-value">PDF</span>
+          <span class="settings-chevron">›</span>
+        </button>
+        <button type="button" class="settings-item" id="privacyBtn">
+          <span class="settings-icon">🔒</span>
+          <span class="settings-label">Приватность оценок</span>
+          <span class="settings-value" id="privacyValue">Скрыто</span>
+          <span class="settings-chevron">›</span>
+        </button>
+      </div>
+
+      <div class="settings-group">
+        <button type="button" class="settings-item" id="installBtn" style="display:none;">
+          <span class="settings-icon">📲</span>
+          <span class="settings-label">Установить приложение</span>
+          <span class="settings-chevron">›</span>
+        </button>
+        <button type="button" class="settings-item" id="aboutBtn">
+          <span class="settings-icon">ℹ️</span>
+          <span class="settings-label">О приложении</span>
+          <span class="settings-value">v1.0</span>
+          <span class="settings-chevron">›</span>
+        </button>
+        <button type="button" class="settings-item" id="resetBtn">
+          <span class="settings-icon">🗑️</span>
+          <span class="settings-label settings-label-danger">Сбросить все данные</span>
+          <span class="settings-chevron">›</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tab-bar" id="tabBar" role="tablist">
+    <button type="button" class="tab-item active" data-tab="home" role="tab" aria-label="Главная">
+      <span class="tab-emoji">🏠</span>
+      <span class="tab-label">Главная</span>
+    </button>
+    <button type="button" class="tab-item" data-tab="awards" role="tab" aria-label="Награды">
+      <span class="tab-emoji">🏆</span>
+      <span class="tab-label">Награды</span>
+    </button>
+    <button type="button" class="tab-item" data-tab="calendar" role="tab" aria-label="Календарь">
+      <span class="tab-emoji">📅</span>
+      <span class="tab-label">Календарь</span>
+    </button>
+    <button type="button" class="tab-item" data-tab="chart" role="tab" aria-label="Динамика">
+      <span class="tab-emoji">📈</span>
+      <span class="tab-label">Динамика</span>
+    </button>
+    <button type="button" class="tab-item" data-tab="profile" role="tab" aria-label="Профиль">
+      <span class="tab-emoji">👤</span>
+      <span class="tab-label">Профиль</span>
+    </button>
+  </nav>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- ==================== PDF ШАБЛОН ==================== -->
+<div id="pdfTemplate" aria-hidden="true">
+  <div class="pdf-cover">
+    <h1>Love Meter</h1>
+    <p class="pdf-sub">Отчёт о наших отношениях</p>
+    <div class="pdf-emoji">💕</div>
+    <div class="pdf-names" id="pdfNames">—</div>
+    <div class="pdf-days" id="pdfDays">—</div>
+  </div>
+  <section class="pdf-section">
+    <h2>Ключевые показатели</h2>
+    <div class="pdf-metrics">
+      <div class="pdf-metric">
+        <div class="pdf-metric-value" id="pdfAvg">0%</div>
+        <div class="pdf-metric-label">Среднее наполнение</div>
+      </div>
+      <div class="pdf-metric">
+        <div class="pdf-metric-value" id="pdfTotalDays">0</div>
+        <div class="pdf-metric-label">Дней вместе</div>
+      </div>
+      <div class="pdf-metric">
+        <div class="pdf-metric-value" id="pdfStreak">0</div>
+        <div class="pdf-metric-label">Стрик</div>
+      </div>
+    </div>
+  </section>
+  <section class="pdf-section">
+    <h2>Моменты месяца</h2>
+    <ul class="pdf-moments" id="pdfMoments"><li>—</li></ul>
+  </section>
+  <section class="pdf-section">
+    <h2>Достижения</h2>
+    <div class="pdf-achievements" id="pdfAchievements">
+      <div class="pdf-ach">—</div>
+    </div>
+  </section>
+  <footer class="pdf-footer">
+    Любовь — это не то, что находят. Это то, что создают каждый день. — Love Meter, 2025
+  </footer>
+</div>
+
+<!-- ==================== СКРИПТЫ ==================== -->
+<script src="js/config.js"></script>
+<script src="js/core.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/screens.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
