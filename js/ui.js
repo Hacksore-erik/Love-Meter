@@ -2,19 +2,14 @@
    UI — интерфейсные функции и обработчики
    ============================================================
    Здесь собрано всё, что связано с пользовательским
-   взаимодействием вне четырёх экранов:
-   - toast-уведомления
-   - модальные окна (пары, инфо, имена, журнал ошибок)
-   - профиль и настройки
-   - экспорт PDF
-   - переключение табов
-   - PWA-установка
-   - блок «Общее состояние пары» (переключатель 7/30 дней)
+   взаимодействием вне четырёх экранов.
 
    Изменения в этой версии:
-   - togglePrivacy() работает с hideMyVotes + pushMyHideFlag
-   - openModal() — починка «скачка» (innerHTML → RAF → .show)
-   - обработчики переключателя периода блока пары
+   - openNamesModal с двумя полями: «Твоё имя» и «Имя партнёра»
+   - renderProfile показывает имена обоих в отдельном блоке
+   - exportPDF: починка «белого листа» — шаблон становится
+     видимым на момент генерации через opacity: 0
+   - openModal: уже починен от «скачка» (двойной RAF)
    ============================================================ */
 
 
@@ -99,8 +94,11 @@ function isScreenActive(name) {
    ПРОФИЛЬ
    ============================================================ */
 function renderProfile() {
+  /* Заголовок профиля — общее имя пары */
   const pn = $('profileNames');
-  if (pn) pn.textContent = APP.state.names;
+  if (pn) {
+    pn.textContent = buildCoupleTitle();
+  }
 
   const start = parseDate(APP.state.startDate);
   const days = daysBetween(start, new Date()) + 1;
@@ -109,28 +107,52 @@ function renderProfile() {
     sub.textContent = 'Вместе • ' + days + ' дней в Love Meter';
   }
 
+  /* Строки имён */
+  const youEl = $('profileYouName');
+  if (youEl) youEl.textContent = getMyName();
+
+  const partnerEl = $('profilePartnerName');
+  if (partnerEl) partnerEl.textContent = getPartnerName();
+
+  /* Приватность */
   const pv = $('privacyValue');
   if (pv) {
     pv.textContent = APP.state.hideMyVotes ? 'Скрыто' : 'Открыто';
   }
 
+  /* Код пары */
   const cb = $('coupleBtnValue');
   if (cb) {
     cb.textContent = APP.coupleId ? 'Код: ' + APP.coupleId : 'Не подключена';
   }
+}
 
-  const nbv = $('namesBtnValue');
-  if (nbv) nbv.textContent = APP.state.names;
+/* Общее название пары для шапки профиля */
+function buildCoupleTitle() {
+  const you = getMyName();
+  const partner = getPartnerName();
+
+  const youDefault = you === CONFIG.DEFAULTS.myName;
+  const partnerDefault = partner === CONFIG.DEFAULTS.partnerName;
+
+  if (youDefault && partnerDefault) {
+    return CONFIG.DEFAULTS.names;
+  }
+
+  if (partnerDefault) {
+    return you;
+  }
+
+  if (youDefault) {
+    return partner;
+  }
+
+  return you + ' & ' + partner;
 }
 
 
 /* ============================================================
    МОДАЛКА — открыть/закрыть
-   ============================================================
-   Починка «скачка»: сначала наполняем innerHTML, потом через
-   requestAnimationFrame добавляем .show. Это гарантирует,
-   что браузер сначала посчитает высоту контента, а потом
-   плавно покажет модалку без «дёргания».
    ============================================================ */
 function openModal(htmlContent) {
   try {
@@ -138,13 +160,9 @@ function openModal(htmlContent) {
     const content = $('coupleModalContent');
     if (!modal || !content) return;
 
-    /* Если уже открыта — сначала сбрасываем, чтобы не было
-       наложения старого и нового содержимого */
     modal.classList.remove('show');
-
     content.innerHTML = htmlContent;
 
-    /* Двойной RAF для надёжности на iOS Safari */
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
         modal.classList.add('show');
@@ -229,9 +247,18 @@ async function onCoupleModalAction(action) {
 
   if (action === 'disconnect') {
     if (!confirm('Отключить пару? Локальные данные сохранятся.')) return;
+
+    const oldCode = APP.coupleId;
+
     storageRemove(CONFIG.STORAGE.couple);
+    if (oldCode) {
+      storageRemove(CONFIG.STORAGE.creator + oldCode);
+    }
+
     APP.coupleId = null;
     APP.state.partnerHideFlag = false;
+    APP.state.partnerName = CONFIG.DEFAULTS.partnerName;
+
     unsubscribeRealtime();
     updateSyncDot('local');
     closeModal();
@@ -323,20 +350,22 @@ function generateCoupleCode() {
 
 
 /* ============================================================
-   МОДАЛКА — РЕДАКТОР ИМЁН
+   МОДАЛКА — РЕДАКТОР ИМЁН (два поля)
    ============================================================ */
 function openNamesModal() {
   openModal(
-    '<h3>Имена пары</h3>' +
-    '<p>Как вас называть в отчётах и профиле?</p>' +
-    '<input type="text" id="namesInput" placeholder="Аня & Максим" maxlength="40" ' +
-      'autocomplete="off" value="' + escapeHtml(APP.state.names) + '">' +
+    '<h3>Имена</h3>' +
+    '<p>Как тебя зовут и как зовут партнёра? Имена видны только внутри пары.</p>' +
+    '<input type="text" id="myNameInput" placeholder="Твоё имя" maxlength="30" ' +
+      'autocomplete="off" value="' + escapeHtml(getMyName()) + '">' +
+    '<input type="text" id="partnerNameInput" placeholder="Имя партнёра" maxlength="30" ' +
+      'autocomplete="off" value="' + escapeHtml(getPartnerName()) + '">' +
     '<button type="button" class="modal-btn primary" data-action="save-names">Сохранить</button>' +
     '<button type="button" class="modal-btn secondary" data-action="close">Отмена</button>'
   );
 
   setTimeout(function () {
-    const inp = $('namesInput');
+    const inp = $('myNameInput');
     if (inp) {
       inp.focus();
       inp.select();
@@ -351,23 +380,28 @@ async function onNamesModalAction(action) {
   }
 
   if (action === 'save-names') {
-    const inp = $('namesInput');
-    const val = (inp ? inp.value : '').trim();
+    const myInp = $('myNameInput');
+    const partnerInp = $('partnerNameInput');
 
-    if (!val) {
-      showToast('Введите имена');
+    const myVal = (myInp ? myInp.value : '').trim();
+    const partnerVal = (partnerInp ? partnerInp.value : '').trim();
+
+    if (!myVal) {
+      showToast('Введи своё имя');
       return;
     }
 
-    APP.state.names = val;
-    saveState();
+    setMyName(myVal);
+    if (partnerVal) {
+      setPartnerName(partnerVal);
+    }
 
     if (APP.supabaseClient && APP.coupleId) {
       try {
-        await pushCoupleMeta();
+        await pushMyName();
       } catch (e) {
         if (typeof LM !== 'undefined') {
-          LM.record('LM-022', e.message || 'Ошибка pushCoupleMeta', 'names=' + val);
+          LM.record('LM-022', e.message || 'Ошибка pushMyName', 'name=' + myVal);
         }
       }
     }
@@ -401,7 +435,7 @@ function openAboutModal() {
   openModal(
     '<h3>Love Meter</h3>' +
     '<p>Трекер эмоционального состояния пары.<br>' +
-    'Версия 1.1 • Режим: ' + mode + '</p>' +
+    'Версия 1.2 • Режим: ' + mode + '</p>' +
     '<p style="font-size:12px;margin-bottom:20px;">Данные хранятся в браузере. ' +
     'Никаких аккаунтов, аналитики и рекламы.</p>' +
     '<button type="button" class="modal-btn primary" data-action="close">Закрыть</button>'
@@ -411,12 +445,6 @@ function openAboutModal() {
 
 /* ============================================================
    ПРИВАТНОСТЬ ОЦЕНОК
-   ============================================================
-   Переключает MY флаг скрытия моих оценок от партнёра.
-   Синхронизируется на сервер через pushMyHideFlag().
-
-   Если сервер недоступен — флаг всё равно переключается
-   локально, следующий push произойдёт при следующей попытке.
    ============================================================ */
 async function togglePrivacy() {
   try {
@@ -438,7 +466,6 @@ async function togglePrivacy() {
         : 'Оценки видны 👀');
     }
 
-    /* Обновляем UI: профиль, главную (для рендера блока пары), график */
     renderProfile();
     renderAll();
     if (isScreenActive('chart')) renderChart();
@@ -464,13 +491,13 @@ function resetAllData() {
 
 
 /* ============================================================
-   ПЕРЕКЛЮЧАТЕЛЬ ПЕРИОДА БЛОКА «ОБЩЕЕ СОСТОЯНИЕ ПАРЫ»
+   ПЕРЕКЛЮЧАТЕЛЬ ПЕРИОДА БЛОКА ПАРЫ
    ============================================================ */
 function onCoupleStatePeriodClick(period) {
   if (period !== 'week' && period !== 'month') return;
 
   APP.coupleStatePeriod = period;
-  storageSet('lovemeter_couple_state_period', period);
+  storageSet(CONFIG.STORAGE.coupleStatePeriod, period);
 
   renderCoupleState();
 }
@@ -478,6 +505,13 @@ function onCoupleStatePeriodClick(period) {
 
 /* ============================================================
    ЭКСПОРТ PDF
+   ============================================================
+   Починка пустого PDF:
+   1. Шаблон #pdfTemplate в CSS лежит не за экраном,
+      а с opacity: 0 и z-index: -1 — html2canvas его видит.
+   2. Перед save() принудительно пересчитываем layout.
+   3. Обёрнуто в двойной RAF, чтобы дать браузеру
+      отрисовать контент перед снятием.
    ============================================================ */
 let html2pdfLoading = null;
 
@@ -524,7 +558,7 @@ async function exportPDF() {
     const start = parseDate(APP.state.startDate);
     const days = daysBetween(start, new Date()) + 1;
 
-    setText('pdfNames', APP.state.names);
+    setText('pdfNames', buildCoupleTitle());
     setText('pdfDays', days + ' дней в Love Meter');
     setText('pdfAvg', couple.hasData ? (couple.percent + '%') : '—');
     setText('pdfTotalDays', days);
@@ -550,6 +584,22 @@ async function exportPDF() {
         : '<div class="pdf-ach">🌱 Первый шаг — в процессе</div>';
     }
 
+    const pdfTemplate = $('pdfTemplate');
+    if (!pdfTemplate) {
+      showToast('Шаблон PDF не найден');
+      return;
+    }
+
+    /* Принудительный пересчёт layout — критично для html2canvas */
+    pdfTemplate.getBoundingClientRect();
+
+    /* Ждём кадр, чтобы браузер применил размеры */
+    await new Promise(function (resolve) {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(resolve);
+      });
+    });
+
     const filename = 'love-meter-' + todayStr() + '.pdf';
 
     const opt = {
@@ -560,7 +610,11 @@ async function exportPDF() {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
-        logging: false
+        logging: false,
+        windowWidth: 794,
+        width: 794,
+        scrollX: 0,
+        scrollY: 0
       },
       jsPDF: {
         unit: 'px',
@@ -569,7 +623,7 @@ async function exportPDF() {
       }
     };
 
-    await window.html2pdf().set(opt).from($('pdfTemplate')).save();
+    await window.html2pdf().set(opt).from(pdfTemplate).save();
     showToast('PDF сохранён 💕');
   } catch (e) {
     if (typeof LM !== 'undefined') {
@@ -845,7 +899,7 @@ function bindEvents() {
   const calNext = $('calNext');
   if (calNext) calNext.addEventListener('click', nextMonth);
 
-  /* ---------- Переключатель периода блока «Общее состояние» ---------- */
+  /* ---------- Переключатель периода блока пары ---------- */
   const coupleStateSeg = $('coupleStateSegmented');
   if (coupleStateSeg) {
     coupleStateSeg.addEventListener('click', function (e) {
@@ -913,7 +967,12 @@ function bindEvents() {
         e.preventDefault();
         onCoupleModalAction('join');
       }
-      if (target && target.id === 'namesInput') {
+      if (target && target.id === 'myNameInput') {
+        e.preventDefault();
+        const partnerInp = $('partnerNameInput');
+        if (partnerInp) partnerInp.focus();
+      }
+      if (target && target.id === 'partnerNameInput') {
         e.preventDefault();
         onNamesModalAction('save-names');
       }
@@ -971,6 +1030,6 @@ function bindEvents() {
     if (e.key === 'Escape') closeModal();
   });
 
-  /* ---------- Обновляем счётчик ошибок при старте ---------- */
+  /* ---------- Счётчик ошибок при старте ---------- */
   updateErrorLogCount();
 }
