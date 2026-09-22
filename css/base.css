@@ -25,7 +25,7 @@
   --accent-bg: #fff0f3;
   --accent-gradient: linear-gradient(135deg, #ff5e7d, #ff2d55);
   --accent-gradient-v: linear-gradient(180deg, #ff8fa3, #ff5e7d, #ff2d55);
---title-gradient: linear-gradient(180deg, #ff8fa3 0%, #ff2d55 55%, #c44dff 100%);
+  --title-gradient: linear-gradient(180deg, #ff8fa3 0%, #ff2d55 55%, #c44dff 100%);
 
   --partner: #5e7dff;
   --partner-soft: #8ea2ff;
@@ -48,6 +48,11 @@
   --danger: #ff3b30;
   --neutral-bg: #f2f2f7;
   --neutral-text: #8e8e93;
+
+  /* ---------- Сердце (динамика через JS) ---------- */
+  --glow-color: rgba(255, 45, 85, 0.3);
+  --pressure-color: rgba(255, 45, 85, 0.35);
+  --ring-color: #ff7da1;
 
   /* ---------- Тени ---------- */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
