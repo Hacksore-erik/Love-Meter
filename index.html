@@ -19,12 +19,10 @@
 </head>
 <body>
 
-<!-- ==================== МОДАЛКА ==================== -->
 <div class="modal-backdrop" id="coupleModal" aria-hidden="true">
   <div class="modal" id="coupleModalContent"></div>
 </div>
 
-<!-- ==================== КАРКАС ==================== -->
 <div class="app-shell">
 
   <header class="app-header">
@@ -41,7 +39,6 @@
 
   <main class="screens" id="screens">
 
-    <!-- ============ ГЛАВНАЯ ============ -->
     <section class="screen active" data-screen="home" aria-label="Главная">
       <div class="heart-container">
         <div class="heart-glow" aria-hidden="true"></div>
@@ -82,7 +79,6 @@
         <div class="vote-hint" id="voteHint">Можно менять один раз в день</div>
       </div>
 
-      <!-- ============ БЛОК «ОБЩЕЕ СОСТОЯНИЕ ПАРЫ» ============ -->
       <div class="card couple-state-card">
         <div class="couple-state-header">
           <h3 class="couple-state-title">Общее состояние пары</h3>
@@ -101,7 +97,6 @@
 
     </section>
 
-    <!-- ============ НАГРАДЫ ============ -->
     <section class="screen" data-screen="awards" aria-label="Достижения">
       <header class="screen-header">
         <h2 class="screen-title">Достижения</h2>
@@ -126,7 +121,6 @@
       <div class="achievements-grid" id="achievementsGrid"></div>
     </section>
 
-    <!-- ============ КАЛЕНДАРЬ ============ -->
     <section class="screen" data-screen="calendar" aria-label="Календарь">
       <header class="screen-header">
         <h2 class="screen-title">Календарь</h2>
@@ -166,7 +160,6 @@
       </div>
     </section>
 
-    <!-- ============ ДИНАМИКА ============ -->
     <section class="screen" data-screen="chart" aria-label="Динамика">
       <header class="screen-header">
         <h2 class="screen-title">Динамика</h2>
@@ -227,7 +220,6 @@
       </div>
     </section>
 
-    <!-- ============ ПРОФИЛЬ ============ -->
     <section class="screen" data-screen="profile" aria-label="Профиль">
       <div class="profile-header">
         <div class="profile-avatar" aria-hidden="true">💕</div>
@@ -235,17 +227,16 @@
         <div class="profile-sub" id="profileSub">—</div>
       </div>
 
-      <!-- ============ БЛОК ИМЁН ============ -->
       <div class="names-card">
         <div class="names-row">
-          <div class="names-icon names-icon-you" aria-hidden="true">🧑</div>
+          <div class="names-icon names-icon-you" id="profileYouIcon" aria-hidden="true">🧑</div>
           <div class="names-info">
             <div class="names-label">Ты</div>
             <div class="names-value" id="profileYouName">Ты</div>
           </div>
         </div>
         <div class="names-row">
-          <div class="names-icon names-icon-partner" aria-hidden="true">👤</div>
+          <div class="names-icon names-icon-partner" id="profilePartnerIcon" aria-hidden="true">🧑</div>
           <div class="names-info">
             <div class="names-label">Партнёр</div>
             <div class="names-value" id="profilePartnerName">Партнёр</div>
@@ -262,7 +253,7 @@
         </button>
         <button type="button" class="settings-item" id="namesBtn">
           <span class="settings-icon">✏️</span>
-          <span class="settings-label">Имена</span>
+          <span class="settings-label">Моё имя</span>
           <span class="settings-value" id="namesBtnValue">Изменить</span>
           <span class="settings-chevron">›</span>
         </button>
@@ -295,7 +286,7 @@
         <button type="button" class="settings-item" id="aboutBtn">
           <span class="settings-icon">ℹ️</span>
           <span class="settings-label">О приложении</span>
-          <span class="settings-value">v1.2</span>
+          <span class="settings-value">v1.3</span>
           <span class="settings-chevron">›</span>
         </button>
         <button type="button" class="settings-item" id="resetBtn">
@@ -333,7 +324,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<!-- ==================== PDF ШАБЛОН ==================== -->
 <div id="pdfTemplate" aria-hidden="true">
   <div class="pdf-cover">
     <h1>Love Meter</h1>
@@ -374,7 +364,6 @@
   </footer>
 </div>
 
-<!-- ==================== СКРИПТЫ ==================== -->
 <script src="js/logger.js"></script>
 <script src="js/config.js"></script>
 <script src="js/core.js"></script>
