@@ -43,7 +43,6 @@ function initSupabaseAsync() {
   return APP.supabaseLoading;
 }
 
-/* Определение роли по owner_id — кто создал пару, тот 'you' */
 async function determineMyRole(code) {
   const localCreator = storageGet(CONFIG.STORAGE.creator + code);
   if (localCreator && localCreator === APP.myId) {
@@ -72,7 +71,6 @@ async function determineMyRole(code) {
     } catch (e) {}
   }
 
-  /* Fallback: если владелец неизвестен — мы партнёр */
   APP.myRole = 'partner';
 }
 
